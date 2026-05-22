@@ -1,31 +1,21 @@
-# Simple workflow for deploying static content to GitHub Pages with Vite for the Course Scheduler Guide
-name: Deploy static content to Pages
+# Deploy the full Node app (guide UI + /proxy-site reverse proxy).
+# GitHub Pages static-only hosting cannot run the proxy — that caused 404s on /proxy-site/...
+name: Deploy full-stack app
 
 on:
-  # Runs on pushes targeting standard default branches
   push:
     branches: ["main", "master", "dev"]
-
-  # Allows you to run this workflow manually from the Actions tab on your Repo
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Allow only one concurrent deployment to prevent race conditions during updates
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Single deploy job for standard static applications
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -39,25 +29,29 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
-            echo "package-lock.json found. Installing with npm ci..."
             npm ci
           else
-            echo "No package-lock.json found. Installing with npm install..."
             npm install
           fi
 
-      - name: Build Production Bundle
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Build production bundle
         run: npm run build
 
-      - name: Setup GitHub Pages Environment
-        uses: actions/configure-pages@v4
-
-      - name: Upload Vite Build Artifacts
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          # Upload the static output directory built by Vite
-          path: './dist'
+          name: dist
+          path: dist/
+          retention-days: 7
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  # Optional: trigger a Render deploy when RENDER_DEPLOY_HOOK is configured in repo secrets.
+  deploy-render:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

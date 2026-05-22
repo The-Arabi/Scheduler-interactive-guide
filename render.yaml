@@ -1,0 +1,14 @@
+# Full-stack deploy: static guide + reverse proxy for course-scheduler (required for SSO login in webview).
+# Connect this repo at https://dashboard.render.com → New → Blueprint
+services:
+  - type: web
+    name: scheduler-interactive-guide
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: NODE_ENV=production node dist/server.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_BASE
+        value: /

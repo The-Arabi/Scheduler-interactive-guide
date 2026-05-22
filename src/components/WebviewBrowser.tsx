@@ -1,9 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, ArrowRight, RotateCw, Home, ExternalLink, 
-  Monitor, Tablet, Shield, Info, Link2, 
-  Globe, CheckCircle2, AlertCircle, Key, Check, Lock, ChevronDown, ChevronUp, Cpu, Terminal
+  Monitor, Tablet, Shield, Link2, 
+  Globe, AlertCircle, Cpu, Terminal
 } from 'lucide-react';
+import {
+  DEFAULT_SCHEDULER_PROXY_URL,
+  fromProxyPathname,
+  toProxyUrl,
+} from '../lib/proxyPath';
 
 interface WebviewBrowserProps {
   initialUrl?: string;
@@ -23,8 +28,8 @@ export default function WebviewBrowser({
   initialUrl = "https://course-scheduler.xlab-cwru.com/" 
 }: WebviewBrowserProps) {
   const [urlInput, setUrlInput] = useState(initialUrl);
-  // Default to our proxy-site path so it loads immediately through our server backend proxy
-  const [iframeUrl, setIframeUrl] = useState("/proxy-site/course-scheduler.xlab-cwru.com/");
+  const [iframeUrl, setIframeUrl] = useState(DEFAULT_SCHEDULER_PROXY_URL);
+  const [proxyError, setProxyError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [isSecure, setIsSecure] = useState(true);
@@ -32,6 +37,25 @@ export default function WebviewBrowser({
   const [consoleOpen, setConsoleOpen] = useState(true);
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const healthUrl = `${import.meta.env.BASE_URL}proxy-site/_health`.replace(/\/+/g, '/');
+    fetch(healthUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error('Proxy unavailable');
+        return res.json();
+      })
+      .then((data) => {
+        if (!data?.proxy) throw new Error('Proxy unavailable');
+        setProxyError(null);
+      })
+      .catch(() => {
+        setProxyError(
+          'The reverse proxy is not running on this host. GitHub Pages cannot serve /proxy-site — deploy with Render (see README) or run "npm run dev" locally.'
+        );
+      });
+  }, []);
+
   const [proxyLogs, setProxyLogs] = useState<ProxyLog[]>([
     {
       time: new Date().toLocaleTimeString(),
@@ -42,23 +66,10 @@ export default function WebviewBrowser({
     }
   ]);
 
-  // Map any user entered global URL to our virtual browser proxy-site route
-  const mapUrlToProxy = (targetUrl: string) => {
-    let formatted = targetUrl.trim();
-    if (!/^https?:\/\//i.test(formatted)) {
-      formatted = 'https://' + formatted;
-    }
-    try {
-      const urlObj = new URL(formatted);
-      return `/proxy-site/${urlObj.host}${urlObj.pathname}${urlObj.search}`;
-    } catch (e) {
-      return `/proxy-site/course-scheduler.xlab-cwru.com/`;
-    }
-  };
-
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
-    const proxied = mapUrlToProxy(urlInput);
+    const proxied = toProxyUrl(urlInput);
+    setProxyError(null);
     
     // Add to logs panel
     const newLog: ProxyLog = {
@@ -77,7 +88,8 @@ export default function WebviewBrowser({
 
   const handleHome = () => {
     setUrlInput(initialUrl);
-    setIframeUrl("/proxy-site/course-scheduler.xlab-cwru.com/");
+    setIframeUrl(DEFAULT_SCHEDULER_PROXY_URL);
+    setProxyError(null);
     setIsSecure(true);
     setIframeKey(prev => prev + 1);
   };
@@ -96,7 +108,8 @@ export default function WebviewBrowser({
 
   const handleQuickLink = (url: string) => {
     setUrlInput(url);
-    setIframeUrl(mapUrlToProxy(url));
+    setIframeUrl(toProxyUrl(url));
+    setProxyError(null);
     setIsSecure(url.startsWith('https://'));
     setIframeKey(prev => prev + 1);
   };
@@ -117,17 +130,12 @@ export default function WebviewBrowser({
         
         console.log("[Virtual Browser Navigation] Detected:", currentPathname);
         
-        if (currentPathname.startsWith('/proxy-site/')) {
-          const afterPrefix = currentPathname.substring('/proxy-site/'.length);
-          const slashIdx = afterPrefix.indexOf('/');
-          if (slashIdx !== -1) {
-            const host = afterPrefix.substring(0, slashIdx);
-            const path = afterPrefix.substring(slashIdx);
-            const realUrl = `https://${host}${path}`;
+        const realUrl = fromProxyPathname(currentPathname);
+        if (realUrl) {
             setUrlInput(realUrl);
 
             // Log navigation to console
-            const isRedirect = host.includes('login.case.edu') || host.includes('sso');
+            const isRedirect = realUrl.includes('login.case.edu') || realUrl.includes('sso');
             const newLog: ProxyLog = {
               time: new Date().toLocaleTimeString(),
               method: 'GET',
@@ -142,7 +150,6 @@ export default function WebviewBrowser({
               if (prev[0] && prev[0].url === realUrl) return prev;
               return [newLog, ...prev];
             });
-          }
         }
       }
     } catch (err) {
@@ -375,16 +382,42 @@ export default function WebviewBrowser({
           </div>
 
           <div className="flex-1 bg-white relative">
+            {proxyError && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center">
+                <AlertCircle className="w-10 h-10 text-amber-600" />
+                <p className="max-w-md text-sm text-slate-700">{proxyError}</p>
+                <a
+                  href={initialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-[#0a304e] underline"
+                >
+                  Open scheduler in a new tab
+                </a>
+              </div>
+            )}
             <iframe 
               ref={iframeRef}
               key={iframeKey}
               src={iframeUrl}
-              onLoad={handleIframeLoad}
+              onLoad={(e) => {
+                handleIframeLoad();
+                const iframe = e.currentTarget;
+                try {
+                  const doc = iframe.contentDocument;
+                  if (doc?.title?.toLowerCase().includes('page not found')) {
+                    setProxyError(
+                      'The proxy server is not reachable (common on GitHub Pages static hosting). Deploy this app with "npm start" on Render or run "npm run dev" locally.'
+                    );
+                  }
+                } catch {
+                  // cross-origin until proxy loads
+                }
+              }}
               className="w-full h-full border-0 select-text"
               allow="geolocation; clipboard-write; clipboard-read"
               title="CWRU Weatherhead Course Scheduler Live Page Webview"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-              referrerPolicy="no-referrer"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation allow-top-navigation-by-user-activation"
             />
           </div>
 
