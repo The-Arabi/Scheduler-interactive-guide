@@ -1,0 +1,6 @@
+{
+  "name": "Weatherhead Course Scheduler Guide",
+  "description": "An interactive, visually polished guide and sandbox simulator for the Case Western Reserve University Weatherhead Course Scheduler.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
