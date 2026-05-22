@@ -4,12 +4,20 @@ export interface ProxyRequestContext {
   body?: Buffer;
   /** Path after /proxy-site/<host>, including leading slash and query string. */
   subpath: string;
+  /** Public origin of this guide app, e.g. https://myapp.onrender.com */
+  publicOrigin: string;
 }
 
 export interface ProxyResponse {
   status: number;
   headers: Record<string, string | string[]>;
   body: Buffer | string;
+}
+
+export interface ProxyConfig {
+  appBase: string;
+  publicOrigin: string;
+  hosts: Set<string>;
 }
 
 const STRIPPED_RESPONSE_HEADERS = new Set([
@@ -31,9 +39,55 @@ const SKIP_REQUEST_HEADERS = new Set([
   'sec-fetch-site',
 ]);
 
+/** Hosts that must be loaded through /proxy-site/ so SSO works inside the iframe. */
+export const DEFAULT_PROXY_HOSTS = [
+  'login.case.edu',
+  'course-scheduler.xlab-cwru.com',
+];
+
+const REWRITABLE_CONTENT_TYPES = [
+  'text/html',
+  'text/css',
+  'text/javascript',
+  'application/javascript',
+  'application/json',
+  'application/xml',
+  'text/xml',
+];
+
+export function createProxyConfig(
+  appBase = '/',
+  publicOrigin: string,
+  extraHosts: string[] = []
+): ProxyConfig {
+  return {
+    appBase: appBase.endsWith('/') ? appBase : `${appBase}/`,
+    publicOrigin: publicOrigin.replace(/\/$/, ''),
+    hosts: new Set([...DEFAULT_PROXY_HOSTS, ...extraHosts]),
+  };
+}
+
+export function joinProxyPath(prefix: string, subpath: string): string {
+  const base = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+  const path = subpath.startsWith('/') ? subpath : `/${subpath}`;
+  return `${base}${path}`;
+}
+
+export function proxyPrefixForHost(host: string, appBase: string): string {
+  const appBaseNorm = appBase.endsWith('/') ? appBase : `${appBase}/`;
+  return `${appBaseNorm}proxy-site/${host}`;
+}
+
+/** Same-origin path prefix for a proxied host (used in HTML/JS rewrites). */
+export function relativeProxyBase(config: ProxyConfig, targetHost: string): string {
+  return joinProxyPath(proxyPrefixForHost(targetHost, config.appBase), '/').replace(
+    /\/$/,
+    ''
+  );
+}
+
 function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
   let cleaned = cookieVal.replace(/;\s*domain=[^;]+/gi, '');
-  cleaned = cleaned.replace(/;\s*secure/gi, '');
   if (!/;\s*path=/i.test(cleaned)) {
     cleaned += `; Path=${proxyPathPrefix}`;
   } else {
@@ -42,38 +96,75 @@ function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
   if (!/;\s*samesite=/i.test(cleaned)) {
     cleaned += '; SameSite=Lax';
   }
+  if (!/;\s*secure/i.test(cleaned)) {
+    cleaned += '; Secure';
+  }
   return cleaned;
-}
-
-function joinProxyPath(prefix: string, subpath: string): string {
-  const base = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
-  const path = subpath.startsWith('/') ? subpath : `/${subpath}`;
-  return `${base}${path}`;
 }
 
 function rewriteLocationHeader(
   location: string,
-  host: string,
-  proxyPathPrefix: string
+  config: ProxyConfig
 ): string {
   if (location.startsWith('http://') || location.startsWith('https://')) {
     const urlObj = new URL(location);
-    return joinProxyPath(proxyPathPrefix, `${urlObj.pathname}${urlObj.search}${urlObj.hash}`);
+    if (!config.hosts.has(urlObj.host)) return location;
+    const prefix = relativeProxyBase(config, urlObj.host);
+    return joinProxyPath(prefix, `${urlObj.pathname}${urlObj.search}${urlObj.hash}`);
   }
-  if (location.startsWith('/')) {
-    return joinProxyPath(proxyPathPrefix, location);
-  }
-  return joinProxyPath(proxyPathPrefix, `/${location}`);
+  return location;
 }
 
-function rewriteHtmlUrls(html: string, host: string, proxyPathPrefix: string): string {
-  const hostPattern = host.replace(/\./g, '\\.');
-  const originHttps = `https://${host}`;
-  const originHttp = `http://${host}`;
+/** Rewrite every reference to proxied hosts in HTML/JS/JSON bodies. */
+export function rewriteContentUrls(content: string, config: ProxyConfig): string {
+  let result = content;
 
-  let result = html;
+  for (const host of config.hosts) {
+    const proxiedRoot = relativeProxyBase(config, host);
+    const escapedHost = host.replace(/\./g, '\\.');
 
+    // https://host/path and http://host/path
+    result = result.replace(
+      new RegExp(`https?:\\/\\/${escapedHost}([^"'\\s<>]*)`, 'gi'),
+      (_match, path = '') => joinProxyPath(proxiedRoot, path)
+    );
+
+    // JSON-escaped: https:\/\/host\/path (Next.js flight data)
+    result = result.replace(
+      new RegExp(`https?:\\\\/\\\\/${escapedHost}((?:\\\\/|[^"'\\\\])*)`, 'gi'),
+      (_match, rawPath = '') => {
+        const path = rawPath.replace(/\\/g, '');
+        const proxied = joinProxyPath(proxiedRoot, path || '/');
+        return proxied.replace(/\//g, '\\/');
+      }
+    );
+
+    // Protocol-relative: //host/path
+    result = result.replace(
+      new RegExp(`\\/\\/${escapedHost}([^"'\\s<>]*)`, 'g'),
+      (_match, path = '') => joinProxyPath(proxiedRoot, path)
+    );
+
+    // Note: we intentionally do NOT rewrite URL-encoded service= callback URLs —
+    // CAS only accepts pre-registered https://course-scheduler.xlab-cwru.com/... callbacks.
+  }
+
+  return result;
+}
+
+function rewriteHtmlDocument(
+  html: string,
+  host: string,
+  config: ProxyConfig
+): string {
+  const proxyPathPrefix = joinProxyPath(
+    proxyPrefixForHost(host, config.appBase),
+    '/'
+  );
   const baseTag = `<base href="${proxyPathPrefix}" />`;
+
+  let result = rewriteContentUrls(html, config);
+
   if (result.includes('<head>')) {
     result = result.replace('<head>', `<head>${baseTag}`);
   } else if (result.includes('<HEAD>')) {
@@ -82,24 +173,33 @@ function rewriteHtmlUrls(html: string, host: string, proxyPathPrefix: string): s
     result = baseTag + result;
   }
 
-  // Rewrite absolute URLs for this host to stay on the proxy path.
+  // Root-relative asset URLs (Next.js /_next/...) — must include proxy prefix
+  const originHttps = `https://${host}`;
+  const originHttp = `http://${host}`;
   result = result.replace(
     new RegExp(`(href|src|action)=(["'])${originHttps}(/[^"']*)?\\2`, 'gi'),
-    (_m, attr, quote, path = '/') => `${attr}=${quote}${proxyPathPrefix}${path}${quote}`
+    (_m, attr, quote, path = '/') =>
+      `${attr}=${quote}${joinProxyPath(relativeProxyBase(config, host), path)}${quote}`
   );
   result = result.replace(
     new RegExp(`(href|src|action)=(["'])${originHttp}(/[^"']*)?\\2`, 'gi'),
-    (_m, attr, quote, path = '/') => `${attr}=${quote}${proxyPathPrefix}${path}${quote}`
+    (_m, attr, quote, path = '/') =>
+      `${attr}=${quote}${joinProxyPath(relativeProxyBase(config, host), path)}${quote}`
   );
   result = result.replace(
     new RegExp(`(href|src|action)=(["'])(/[^"']*)\\2`, 'gi'),
     (_m, attr, quote, path) => {
-      if (path.startsWith(proxyPathPrefix) || path.startsWith('//')) return _m;
-      return `${attr}=${quote}${proxyPathPrefix}${path}${quote}`;
+      if (path.startsWith('/proxy-site/') || path.startsWith('//')) return _m;
+      return `${attr}=${quote}${joinProxyPath(relativeProxyBase(config, host), path)}${quote}`;
     }
   );
 
   return result;
+}
+
+function shouldRewriteBody(contentType: string): boolean {
+  const lower = contentType.toLowerCase();
+  return REWRITABLE_CONTENT_TYPES.some((t) => lower.includes(t));
 }
 
 export async function handleProxyRequest(
@@ -107,8 +207,8 @@ export async function handleProxyRequest(
   ctx: ProxyRequestContext,
   appBase = '/'
 ): Promise<ProxyResponse> {
-  const appBaseNorm = appBase.endsWith('/') ? appBase : `${appBase}/`;
-  const proxyPathPrefix = `${appBaseNorm}proxy-site/${host}/`;
+  const config = createProxyConfig(appBase, ctx.publicOrigin);
+  const proxyPathPrefix = joinProxyPath(proxyPrefixForHost(host, appBase), '/');
   const subpath = ctx.subpath || '/';
   const targetUrl = `https://${host}${subpath}`;
 
@@ -166,7 +266,7 @@ export async function handleProxyRequest(
     }
 
     if (lowerKey === 'location') {
-      outHeaders[key] = rewriteLocationHeader(value, host, proxyPathPrefix);
+      outHeaders[key] = rewriteLocationHeader(value, config);
       return;
     }
 
@@ -174,14 +274,15 @@ export async function handleProxyRequest(
   });
 
   if (response.status >= 300 && response.status < 400) {
-    const body = Buffer.alloc(0);
-    return { status: response.status, headers: outHeaders, body };
+    return { status: response.status, headers: outHeaders, body: Buffer.alloc(0) };
   }
 
   const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('text/html')) {
-    const htmlText = await response.text();
-    const rewritten = rewriteHtmlUrls(htmlText, host, proxyPathPrefix);
+  if (shouldRewriteBody(contentType)) {
+    const text = await response.text();
+    const rewritten = contentType.includes('text/html')
+      ? rewriteHtmlDocument(text, host, config)
+      : rewriteContentUrls(text, config);
     return { status: response.status, headers: outHeaders, body: rewritten };
   }
 

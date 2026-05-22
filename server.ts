@@ -9,6 +9,19 @@ import {
 
 const APP_BASE = process.env.APP_BASE || '/';
 
+function getPublicOrigin(req: express.Request): string {
+  if (process.env.PUBLIC_ORIGIN) {
+    return process.env.PUBLIC_ORIGIN.replace(/\/$/, '');
+  }
+  const proto = (req.get('x-forwarded-proto') || req.protocol || 'https')
+    .split(',')[0]
+    .trim();
+  const host = (req.get('x-forwarded-host') || req.get('host') || 'localhost')
+    .split(',')[0]
+    .trim();
+  return `${proto}://${host}`;
+}
+
 function applyProxyResponse(
   res: express.Response,
   proxyRes: Awaited<ReturnType<typeof handleProxyRequest>>
@@ -48,6 +61,7 @@ async function proxyFromExpress(
       headers: req.headers as ProxyRequestContext['headers'],
       body,
       subpath,
+      publicOrigin: getPublicOrigin(req),
     };
     const proxyRes = await handleProxyRequest(host, ctx, APP_BASE);
     applyProxyResponse(res, proxyRes);

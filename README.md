@@ -28,6 +28,10 @@ Open http://localhost:3000 — the webview loads the scheduler through the proxy
 
 The production server runs `node dist/server.cjs`, which serves the built UI and the `/proxy-site` proxy on the **same domain**.
 
+### SSO / `login.case.edu refused to connect`
+
+That error means the iframe tried to load CWRU CAS **directly** (it sends `X-Frame-Options: DENY`). The proxy rewrites those URLs to `/proxy-site/login.case.edu/...` so login stays same-origin. After deploying this fix, trigger a **manual redeploy** on Render. If issues persist, set `PUBLIC_ORIGIN` in Render to your exact service URL (e.g. `https://your-app.onrender.com`).
+
 ## Build commands
 
 | Command        | Description                                      |

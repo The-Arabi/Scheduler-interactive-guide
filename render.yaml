@@ -12,3 +12,6 @@ services:
         value: production
       - key: APP_BASE
         value: /
+      # Set to your Render URL if auto-detection fails (e.g. https://scheduler-interactive-guide.onrender.com)
+      - key: PUBLIC_ORIGIN
+        sync: false
