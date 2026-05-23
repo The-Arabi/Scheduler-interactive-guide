@@ -48,11 +48,52 @@ export const DEFAULT_PROXY_HOSTS = [
 const CAS_HOST = 'login.case.edu';
 const SCHEDULER_HOST = 'course-scheduler.xlab-cwru.com';
 
-/** Next.js client routing uses /editor etc. against page origin (our proxy host), not the scheduler host. */
-function buildNavigationShim(host: string, appBase: string): string {
-  const prefix = joinProxyPath(proxyPrefixForHost(host, appBase), '/').replace(/\/$/, '');
-  const p = JSON.stringify(prefix);
-  return `<script id="xlab-proxy-nav-shim">(function(){var P=${p};function f(u){if(typeof u!=="string")return u;if(u.indexOf(P)===0||u.indexOf("http")===0||u.indexOf("//")===0)return u;if(u.charAt(0)==="/")return P+u;return u;}var h=history;var ps=h.pushState.bind(h),rs=h.replaceState.bind(h);h.pushState=function(s,t,u){return ps(s,t,f(u));};h.replaceState=function(s,t,u){return rs(s,t,f(u));};var l=location,a=l.assign.bind(l),r=l.replace.bind(l);l.assign=function(u){return a(f(u));};l.replace=function(u){return r(f(u));};var of=window.fetch;window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&typeof i==="object"&&i.url)i=new Request(f(i.url),i);return of(i,n);};var p=l.pathname||"";if(p.indexOf("cwru-sso-callback")!==-1){setTimeout(function(){if((l.pathname||"").indexOf("cwru-sso-callback")!==-1)r(f("/"));},2000);}})();</script>`;
+/** Keep navigation/fetch on /proxy-site/<host>/... — never break out to bare login.case.edu URLs. */
+function buildNavigationShim(appBase: string): string {
+  const schedulerPx = joinProxyPath(
+    proxyPrefixForHost(SCHEDULER_HOST, appBase),
+    '/'
+  ).replace(/\/$/, '');
+  const casPx = joinProxyPath(proxyPrefixForHost(CAS_HOST, appBase), '/').replace(
+    /\/$/,
+    ''
+  );
+  return `<script id="xlab-proxy-nav-shim">(function(){
+var S=${JSON.stringify(schedulerPx)},C=${JSON.stringify(casPx)};
+var HOSTS={${JSON.stringify(CAS_HOST)}:C,${JSON.stringify(SCHEDULER_HOST)}:S};
+function px(h){return HOSTS[h]||S;}
+function curPx(){var m=(location.pathname||"").match(/\\/proxy-site\\/([^/]+)/);return m?px(m[1]):S;}
+function casPath(path,host){if(host==="login.case.edu"&&(path==="/login"||path.indexOf("/login?")===0))return path.replace(/^\\/login/,"/cas/login");return path;}
+function f(u){
+  if(typeof u!=="string")return u;
+  if(u.indexOf("/proxy-site/")!==-1)return u;
+  try{
+    if(u.indexOf("//")===0){u=(location.protocol||"https:")+u;}
+    if(u.indexOf("http://")===0||u.indexOf("https://")===0){
+      var abs=new URL(u);
+      if(HOSTS[abs.hostname])return px(abs.hostname)+casPath(abs.pathname,abs.hostname)+abs.search+abs.hash;
+      return u;
+    }
+    if(u.charAt(0)==="/"){
+      var m=(location.pathname||"").match(/\\/proxy-site\\/([^/]+)/);
+      var host=m?m[1]:"";
+      return curPx()+casPath(u,host);
+    }
+  }catch(e){}
+  return u;
+}
+var h=history,ps=h.pushState.bind(h),rs=h.replaceState.bind(h);
+h.pushState=function(st,ti,u){return ps(st,ti,f(u));};
+h.replaceState=function(st,ti,u){return rs(st,ti,f(u));};
+var l=location,a=l.assign.bind(l),r=l.replace.bind(l);
+l.assign=function(u){return a(f(u));};
+l.replace=function(u){return r(f(u));};
+var of=window.fetch;
+window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&i.url)i=new Request(f(i.url),i);return of(i,n);};
+if((l.pathname||"").indexOf("cwru-sso-callback")!==-1){
+  setTimeout(function(){if((l.pathname||"").indexOf("cwru-sso-callback")!==-1)r(f("/"));},1500);
+}
+})();</script>`;
 }
 
 /** Apereo CAS lives at /cas/login, not /login (which 404s). */
@@ -210,7 +251,9 @@ function rewriteHtmlDocument(
   );
   const baseTag = `<base href="${proxyPathPrefix}" />`;
   const navShim =
-    host === SCHEDULER_HOST ? buildNavigationShim(host, config.appBase) : '';
+    host === SCHEDULER_HOST || host === CAS_HOST
+      ? buildNavigationShim(config.appBase)
+      : '';
   const headInjection = `${navShim}${baseTag}`;
 
   let result = rewriteContentUrls(html, config);

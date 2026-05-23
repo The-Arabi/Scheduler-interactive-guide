@@ -34,6 +34,27 @@ export const DEFAULT_SCHEDULER_PROXY_URL = toProxyUrl(
   'https://course-scheduler.xlab-cwru.com/'
 );
 
+/** CWRU CAS login with scheduler SSO callback (must stay on /proxy-site/ path). */
+export const PROXIED_CAS_LOGIN_URL = toProxyUrl(
+  'https://login.case.edu/cas/login?service=https%3A%2F%2Fcourse-scheduler.xlab-cwru.com%2Fapi%2Fauth%2Fcwru-sso-callback'
+);
+
+const PROXY_HOST_PATTERN =
+  /^(https?:\/\/)?(login\.case\.edu|course-scheduler\.xlab-cwru\.com)(\/|$)/i;
+
+/** True when a URL targets a host that must load through the proxy, not directly in the iframe. */
+export function isDirectExternalSchedulerUrl(url: string): boolean {
+  try {
+    const u = new URL(url.trim());
+    return (
+      (u.hostname === 'login.case.edu' || u.hostname === 'course-scheduler.xlab-cwru.com') &&
+      !url.includes('/proxy-site/')
+    );
+  } catch {
+    return PROXY_HOST_PATTERN.test(url.trim());
+  }
+}
+
 /** Parse a proxy pathname back into the real external URL. */
 export function fromProxyPathname(pathname: string): string | null {
   const appBase = getAppBase();

@@ -12,8 +12,12 @@ import {
 import {
   DEFAULT_SCHEDULER_PROXY_URL,
   fromProxyPathname,
+  isDirectExternalSchedulerUrl,
   toProxyUrl,
 } from '../lib/proxyPath';
+
+const CAS_LOGIN_EXTERNAL =
+  'https://login.case.edu/cas/login?service=https://course-scheduler.xlab-cwru.com/api/auth/cwru-sso-callback';
 import {
   detectChapterCompletions,
   readSchedulerSnapshot,
@@ -37,13 +41,49 @@ export default function WebviewBrowser({
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
+  const [tunnelNotice, setTunnelNotice] = useState<string | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const snapshotHistoryRef = useRef<ReturnType<typeof readSchedulerSnapshot>[]>([]);
+  const recoveringRef = useRef(false);
+
+  const pullIntoProxy = useCallback((externalUrl: string) => {
+    const proxied = isDirectExternalSchedulerUrl(externalUrl)
+      ? toProxyUrl(externalUrl)
+      : externalUrl.includes('/proxy-site/')
+        ? externalUrl
+        : toProxyUrl(externalUrl);
+    recoveringRef.current = true;
+    setTunnelNotice('Routing sign-in through the embedded proxy…');
+    setIframeUrl(proxied);
+    setUrlInput(externalUrl);
+    setIframeKey((k) => k + 1);
+    window.setTimeout(() => {
+      recoveringRef.current = false;
+      setTunnelNotice(null);
+    }, 1500);
+  }, []);
 
   const sampleIframe = useCallback(() => {
-    const snap = readSchedulerSnapshot(iframeRef.current);
-    if (!snap) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    let snap: ReturnType<typeof readSchedulerSnapshot> = null;
+    try {
+      snap = readSchedulerSnapshot(iframe);
+    } catch {
+      snap = null;
+    }
+
+    if (!snap) {
+      if (recoveringRef.current) return;
+      if (isDirectExternalSchedulerUrl(urlInput)) {
+        pullIntoProxy(urlInput);
+      } else if (iframeUrl.includes('/proxy-site/')) {
+        pullIntoProxy(CAS_LOGIN_EXTERNAL);
+      }
+      return;
+    }
 
     const history = snapshotHistoryRef.current.filter(Boolean) as NonNullable<
       ReturnType<typeof readSchedulerSnapshot>
@@ -65,7 +105,7 @@ export default function WebviewBrowser({
     if (detected.length > 0) {
       onChaptersDetected?.(detected);
     }
-  }, [onChaptersDetected]);
+  }, [onChaptersDetected, pullIntoProxy, urlInput, iframeUrl]);
 
   useEffect(() => {
     const healthUrl = `${import.meta.env.BASE_URL}proxy-site/_health`.replace(
@@ -83,19 +123,23 @@ export default function WebviewBrowser({
       })
       .catch(() => {
         setProxyError(
-          'The reverse proxy is not running on this host. Deploy with Render (see README) or run "npm run dev" locally.'
+          'The reverse proxy is not running on this host. Deploy with Render or run "npm run dev" locally.'
         );
       });
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(sampleIframe, 2000);
+    const interval = window.setInterval(sampleIframe, 1500);
     return () => window.clearInterval(interval);
   }, [sampleIframe]);
 
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
     setProxyError(null);
+    if (isDirectExternalSchedulerUrl(urlInput)) {
+      pullIntoProxy(urlInput);
+      return;
+    }
     setIframeUrl(toProxyUrl(urlInput));
     setIframeKey((k) => k + 1);
   };
@@ -112,7 +156,7 @@ export default function WebviewBrowser({
   };
 
   const handleIframeLoad = () => {
-    window.setTimeout(sampleIframe, 300);
+    window.setTimeout(sampleIframe, 200);
     try {
       const doc = iframeRef.current?.contentDocument;
       if (doc?.title?.toLowerCase().includes('page not found')) {
@@ -121,7 +165,7 @@ export default function WebviewBrowser({
         );
       }
     } catch {
-      // ignore
+      sampleIframe();
     }
   };
 
@@ -208,6 +252,12 @@ export default function WebviewBrowser({
         </div>
       </div>
 
+      {tunnelNotice && (
+        <p className="shrink-0 bg-amber-50 border-b border-amber-200 px-3 py-1.5 text-xs text-amber-900">
+          {tunnelNotice}
+        </p>
+      )}
+
       <div className="relative min-h-0 flex-1 bg-slate-100">
         {proxyError && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center">
@@ -231,7 +281,7 @@ export default function WebviewBrowser({
             onLoad={handleIframeLoad}
             className="h-full w-full border-0 bg-white"
             title="CWRU Course Scheduler"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation allow-top-navigation-by-user-activation"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
           />
         </div>
       </div>
