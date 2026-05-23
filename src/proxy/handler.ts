@@ -45,6 +45,24 @@ export const DEFAULT_PROXY_HOSTS = [
   'course-scheduler.xlab-cwru.com',
 ];
 
+const CAS_HOST = 'login.case.edu';
+
+/** Apereo CAS lives at /cas/login, not /login (which 404s). */
+export function normalizeProxiedSubpath(host: string, subpath: string): string {
+  if (host !== CAS_HOST) return subpath;
+  if (subpath === '/login' || subpath.startsWith('/login?')) {
+    return subpath.replace(/^\/login/, '/cas/login');
+  }
+  return subpath;
+}
+
+function fixCasLoginPath(path: string): string {
+  if (path === '/login' || path.startsWith('/login?')) {
+    return path.replace(/^\/login/, '/cas/login');
+  }
+  return path;
+}
+
 const REWRITABLE_CONTENT_TYPES = [
   'text/html',
   'text/css',
@@ -111,13 +129,17 @@ function rewriteLocationHeader(
     const urlObj = new URL(location);
     if (!config.hosts.has(urlObj.host)) return location;
     const prefix = relativeProxyBase(config, urlObj.host);
-    return joinProxyPath(prefix, `${urlObj.pathname}${urlObj.search}${urlObj.hash}`);
+    const pathname =
+      urlObj.host === CAS_HOST ? fixCasLoginPath(urlObj.pathname) : urlObj.pathname;
+    return joinProxyPath(prefix, `${pathname}${urlObj.search}${urlObj.hash}`);
   }
   // Relative redirects (e.g. Location: /login) must stay under /proxy-site/<host>/
   // or the iframe navigates to this app's /login and loads the guide inside itself.
   if (location.startsWith('/')) {
     if (location.includes('/proxy-site/')) return location;
-    return joinProxyPath(relativeProxyBase(config, currentHost), location);
+    const path =
+      currentHost === CAS_HOST ? fixCasLoginPath(location) : location;
+    return joinProxyPath(relativeProxyBase(config, currentHost), path);
   }
   return location;
 }
@@ -155,6 +177,16 @@ export function rewriteContentUrls(content: string, config: ProxyConfig): string
     // Note: we intentionally do NOT rewrite URL-encoded service= callback URLs —
     // CAS only accepts pre-registered https://course-scheduler.xlab-cwru.com/... callbacks.
   }
+
+  // CAS uses form action="login" (relative) → must not become .../login on login.case.edu
+  result = result.replace(
+    /https?:\/\/login\.case\.edu\/login/gi,
+    'https://login.case.edu/cas/login'
+  );
+  result = result.replace(
+    /\/proxy-site\/login\.case\.edu\/login/gi,
+    '/proxy-site/login.case.edu/cas/login'
+  );
 
   return result;
 }
@@ -197,9 +229,28 @@ function rewriteHtmlDocument(
     new RegExp(`(href|src|action)=(["'])(/[^"']*)\\2`, 'gi'),
     (_m, attr, quote, path) => {
       if (path.startsWith('/proxy-site/') || path.startsWith('//')) return _m;
-      return `${attr}=${quote}${joinProxyPath(relativeProxyBase(config, host), path)}${quote}`;
+      const fixed =
+        host === CAS_HOST ? fixCasLoginPath(path) : path;
+      return `${attr}=${quote}${joinProxyPath(relativeProxyBase(config, host), fixed)}${quote}`;
     }
   );
+
+  // CAS login form uses action="login" (no slash) — base tag resolves to /proxy-site/.../login → 404
+  if (host === CAS_HOST) {
+    const casAction = joinProxyPath(relativeProxyBase(config, host), '/cas/login');
+    result = result.replace(
+      /(action|href)=(["'])login\2/gi,
+      `$1=$2${casAction}$2`
+    );
+    const proxyBase = relativeProxyBase(config, host);
+    result = result.replace(
+      /(href|src|action)=(["'])(?!https?:|\/|#|mailto:|javascript:|data:)([^"']+)\2/gi,
+      (_m, attr, quote, rel) => {
+        const path = rel === 'login' ? '/cas/login' : `/${rel}`;
+        return `${attr}=${quote}${joinProxyPath(proxyBase, path)}${quote}`;
+      }
+    );
+  }
 
   return result;
 }
@@ -216,7 +267,7 @@ export async function handleProxyRequest(
 ): Promise<ProxyResponse> {
   const config = createProxyConfig(appBase, ctx.publicOrigin);
   const proxyPathPrefix = joinProxyPath(proxyPrefixForHost(host, appBase), '/');
-  const subpath = ctx.subpath || '/';
+  const subpath = normalizeProxiedSubpath(host, ctx.subpath || '/');
   const targetUrl = `https://${host}${subpath}`;
 
   const headers = new Headers();
