@@ -100,6 +100,12 @@ document.addEventListener("click",function(e){
   var n=f(h);
   if(n!==h){e.preventDefault();e.stopPropagation();location.assign(n);}
 },true);
+function pullBack(){
+  if(!HOSTS[location.hostname]||location.pathname.indexOf("/proxy-site/")!==-1)return;
+  var p=px(location.hostname)+casPath(location.pathname,location.hostname)+location.search+location.hash;
+  location.replace(p);
+}
+pullBack();setInterval(pullBack,400);
 })();</script>`;
 }
 
@@ -203,7 +209,14 @@ export function relativeProxyBase(config: ProxyConfig, targetHost: string): stri
 
 function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
   const cookieName = cookieVal.split('=')[0]?.trim() ?? '';
-  if (cookieName.startsWith('__Host-') || cookieName.startsWith('__Secure-')) {
+  // __Host- cookies must stay Path=/ on this site (guide origin) to cover /proxy-site/...
+  if (cookieName.startsWith('__Host-')) {
+    let hostCookie = cookieVal.replace(/;\s*domain=[^;]+/gi, '');
+    if (!/;\s*path=/i.test(hostCookie)) hostCookie += '; Path=/';
+    if (!/;\s*secure/i.test(hostCookie)) hostCookie += '; Secure';
+    return hostCookie;
+  }
+  if (cookieName.startsWith('__Secure-')) {
     return cookieVal;
   }
   let cleaned = cookieVal.replace(/;\s*domain=[^;]+/gi, '');
@@ -288,6 +301,18 @@ export function rewriteContentUrls(content: string, config: ProxyConfig): string
     /\/proxy-site\/login\.case\.edu\/login/gi,
     '/proxy-site/login.case.edu/cas/login'
   );
+
+  for (const host of config.hosts) {
+    const proxiedRoot = relativeProxyBase(config, host);
+    const escapedHost = host.replace(/\./g, '\\.');
+    result = result.replace(
+      new RegExp(
+        `(http-equiv=["']refresh["'][^>]*content=["'][^"']*?URL=https?:\\/\\/${escapedHost}([^"']*))`,
+        'gi'
+      ),
+      (_m, _prefix, path = '') => `http-equiv="refresh" content="0;url=${joinProxyPath(proxiedRoot, path || '/')}"`
+    );
+  }
 
   return result;
 }
@@ -411,12 +436,63 @@ export async function handleProxyRequest(
     ? new Uint8Array(ctx.body).buffer
     : undefined;
 
-  const response = await fetch(targetUrl, {
+  const isSsoCallback =
+    host === SCHEDULER_HOST && subpath.includes('cwru-sso-callback');
+
+  let response = await fetch(targetUrl, {
     method: ctx.method,
     headers,
     body: requestBody,
     redirect: 'manual',
   });
+
+  const mergedSetCookies: string[] = [];
+
+  if (isSsoCallback && ctx.method === 'GET') {
+    let hopUrl = targetUrl;
+    let hopHost = host;
+    for (let hop = 0; hop < 12 && response.status >= 300 && response.status < 400; hop++) {
+      const setCookies =
+        typeof response.headers.getSetCookie === 'function'
+          ? response.headers.getSetCookie()
+          : response.headers.get('set-cookie')
+            ? [response.headers.get('set-cookie')!]
+            : [];
+      for (const c of setCookies) {
+        mergedSetCookies.push(
+          rewriteSetCookie(
+            c,
+            joinProxyPath(proxyPrefixForHost(hopHost, appBase), '/')
+          )
+        );
+      }
+
+      const location = response.headers.get('location');
+      if (!location) break;
+
+      if (location.startsWith('http://') || location.startsWith('https://')) {
+        const urlObj = new URL(location);
+        if (!config.hosts.has(urlObj.host)) break;
+        hopHost = urlObj.host;
+        hopUrl = location;
+      } else if (location.startsWith('/')) {
+        hopUrl = `https://${hopHost}${location}`;
+      } else {
+        break;
+      }
+
+      const hopHeaders = new Headers();
+      headers.forEach((value, key) => hopHeaders.set(key, value));
+      hopHeaders.set('host', hopHost);
+      hopHeaders.set('origin', `https://${hopHost}`);
+
+      response = await fetch(hopUrl, {
+        method: 'GET',
+        headers: hopHeaders,
+        redirect: 'manual',
+      });
+    }
+  }
 
   const outHeaders: Record<string, string | string[]> = {};
 
@@ -431,9 +507,8 @@ export async function handleProxyRequest(
           : value
             ? [value]
             : [];
-      outHeaders['set-cookie'] = values.map((c) =>
-        rewriteSetCookie(c, proxyPathPrefix)
-      );
+      const rewritten = values.map((c) => rewriteSetCookie(c, proxyPathPrefix));
+      outHeaders['set-cookie'] = [...mergedSetCookies, ...rewritten];
       return;
     }
 

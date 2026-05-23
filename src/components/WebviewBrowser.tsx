@@ -16,6 +16,8 @@ import {
   PROXIED_SCHEDULER_HOME_URL,
   PROXIED_SCHEDULER_LOGIN_URL,
   fromProxyPathname,
+  pullExternalIntoProxy,
+  toAbsoluteProxyUrl,
   toProxyUrl,
 } from '../lib/proxyPath';
 import {
@@ -33,22 +35,34 @@ type DeviceMode = 'desktop' | 'tablet';
 const MAX_HISTORY = 30;
 const SCHEDULER_HOST = 'course-scheduler.xlab-cwru.com';
 const SCHEDULER_LOGIN_URL = `https://${SCHEDULER_HOST}/login`;
+const PROXIED_EDITOR_URL = toProxyUrl(`https://${SCHEDULER_HOST}/editor`);
 
-/** True when the popup has finished SSO on a proxied scheduler page (session cookies on guide origin). */
 function isProxiedSchedulerAuthed(pathname: string, search: string): boolean {
-  return (
-    pathname.includes(`/proxy-site/${SCHEDULER_HOST}/`) &&
-    !pathname.includes('/login') &&
-    !pathname.includes('cwru-sso-callback') &&
-    !search.includes('error=')
-  );
+  if (!pathname.includes(`/proxy-site/${SCHEDULER_HOST}`)) return false;
+  if (search.includes('error=')) return false;
+  if (pathname.includes('cwru-sso-callback')) return false;
+  if (/\/login\/?(\?|$)/.test(pathname)) return false;
+  return true;
+}
+
+/** If popup/iframe broke out to bare scheduler/CAS, pull back onto /proxy-site/... */
+function pullWindowIntoProxy(win: Window): boolean {
+  try {
+    const proxied = pullExternalIntoProxy(win.location.href);
+    if (proxied) {
+      win.location.replace(proxied);
+      return true;
+    }
+  } catch {
+    /* cross-origin */
+  }
+  return false;
 }
 
 export default function WebviewBrowser({
-  initialUrl = SCHEDULER_LOGIN_URL,
   onChaptersDetected,
 }: WebviewBrowserProps) {
-  const [urlInput, setUrlInput] = useState(initialUrl);
+  const [urlInput, setUrlInput] = useState(() => toAbsoluteProxyUrl(SCHEDULER_LOGIN_URL));
   const [iframeUrl, setIframeUrl] = useState(DEFAULT_SCHEDULER_PROXY_URL);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
@@ -62,9 +76,12 @@ export default function WebviewBrowser({
   const popupPollRef = useRef<number | null>(null);
   const popupAuthedPathRef = useRef<string | null>(null);
 
-  const navigateIframe = useCallback((proxiedUrl: string, displayUrl?: string) => {
-    setIframeUrl(proxiedUrl);
-    setUrlInput(displayUrl ?? fromProxyPathname(proxiedUrl) ?? proxiedUrl);
+  const navigateIframe = useCallback((proxiedPath: string) => {
+    const path = proxiedPath.startsWith('/proxy-site/')
+      ? proxiedPath
+      : toProxyUrl(proxiedPath);
+    setIframeUrl(path);
+    setUrlInput(toAbsoluteProxyUrl(path));
     setIframeKey((k) => k + 1);
     setTunnelNotice(null);
     setSignInBusy(false);
@@ -80,95 +97,129 @@ export default function WebviewBrowser({
   }, []);
 
   const syncPanelFromPopup = useCallback(
-    (popupLoc: Location, closePopup = true) => {
+    (popupLoc: Location) => {
       const proxied = `${popupLoc.pathname}${popupLoc.search}${popupLoc.hash}`;
       popupAuthedPathRef.current = proxied;
-      const real = fromProxyPathname(popupLoc.pathname) ?? initialUrl;
-      if (closePopup) {
-        stopPopupPoll();
-        try {
-          popupRef.current?.close();
-        } catch {
-          /* ignore */
-        }
+      stopPopupPoll();
+      try {
+        popupRef.current?.close();
+      } catch {
+        /* ignore */
       }
       setTunnelNotice('Signed in — loading the scheduler in the panel…');
-      navigateIframe(proxied, real);
+      navigateIframe(proxied);
       window.setTimeout(() => setTunnelNotice(null), 2500);
     },
-    [initialUrl, navigateIframe, stopPopupPoll]
+    [navigateIframe, stopPopupPoll]
   );
+
+  const pollPopup = useCallback(() => {
+    const win = popupRef.current;
+    if (!win) return;
+
+    if (win.closed) {
+      stopPopupPoll();
+      if (popupAuthedPathRef.current) {
+        navigateIframe(popupAuthedPathRef.current);
+      } else {
+        setTunnelNotice(
+          'Popup closed. If you finished signing in, click “Load session”.'
+        );
+      }
+      return;
+    }
+
+    if (pullWindowIntoProxy(win)) return;
+
+    try {
+      if (win.location.origin !== window.location.origin) return;
+      const { pathname, search } = win.location;
+      if (isProxiedSchedulerAuthed(pathname, search)) {
+        syncPanelFromPopup(win.location);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [navigateIframe, stopPopupPoll, syncPanelFromPopup]);
 
   const startSignIn = useCallback(() => {
     stopPopupPoll();
     popupAuthedPathRef.current = null;
     setSignInBusy(true);
     setTunnelNotice(
-      'Sign in through the popup. When you reach the scheduler, the panel will update automatically.'
+      'Sign in through the popup. Stay on this site — do not use a separate scheduler tab.'
     );
 
     const popup = window.open(
-      PROXIED_CAS_LOGIN_URL,
+      toAbsoluteProxyUrl(PROXIED_CAS_LOGIN_URL),
       'cwru-scheduler-sso',
       'width=520,height=720,scrollbars=yes,resizable=yes'
     );
     if (!popup) {
       setSignInBusy(false);
       setTunnelNotice(null);
-      setProxyError(
-        'Popup blocked. Allow popups for this site, or use “Open in new tab” below.'
-      );
+      setProxyError('Popup blocked. Allow popups, or open sign-in in a new tab from the banner.');
       return;
     }
     popupRef.current = popup;
-
-    popupPollRef.current = window.setInterval(() => {
-      const win = popupRef.current;
-      if (!win) return;
-
-      if (win.closed) {
-        stopPopupPoll();
-        if (popupAuthedPathRef.current) {
-          navigateIframe(popupAuthedPathRef.current);
-          setTunnelNotice(null);
-        } else {
-          setTunnelNotice(
-            'Popup closed. If you finished signing in, click “Load session” in the toolbar.'
-          );
-        }
-        return;
-      }
-
-      try {
-        if (win.location.origin !== window.location.origin) return;
-        const { pathname, search } = win.location;
-        if (isProxiedSchedulerAuthed(pathname, search)) {
-          syncPanelFromPopup(win.location);
-        }
-      } catch {
-        /* ignore */
-      }
-    }, 400);
-  }, [navigateIframe, stopPopupPoll, syncPanelFromPopup]);
+    popupPollRef.current = window.setInterval(pollPopup, 300);
+  }, [pollPopup, stopPopupPoll]);
 
   const loadProxiedSession = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (iframe) {
+      try {
+        if (pullWindowIntoProxy(iframe.contentWindow!)) return;
+      } catch {
+        const pulled = pullExternalIntoProxy(iframe.src);
+        if (pulled) {
+          navigateIframe(new URL(pulled).pathname + new URL(pulled).search);
+          return;
+        }
+      }
+    }
+
     const snap = readSchedulerSnapshot(iframeRef.current);
     if (snap && isProxiedSchedulerAuthed(snap.proxyPathname, '')) {
-      navigateIframe(snap.proxyPathname, snap.realUrl ?? undefined);
+      navigateIframe(snap.proxyPathname);
       return;
     }
     if (popupAuthedPathRef.current) {
       navigateIframe(popupAuthedPathRef.current);
       return;
     }
-    setTunnelNotice('Loading scheduler…');
-    navigateIframe(PROXIED_SCHEDULER_HOME_URL, `https://${SCHEDULER_HOST}/`);
+
+    setTunnelNotice('Loading scheduler (proxied)…');
+    navigateIframe(PROXIED_EDITOR_URL);
     window.setTimeout(() => setTunnelNotice(null), 2000);
   }, [navigateIframe]);
 
   useEffect(() => () => stopPopupPoll(), [stopPopupPoll]);
 
+  const enforceIframeProxy = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      if (pullWindowIntoProxy(iframe.contentWindow!)) return;
+      const { pathname, search } = iframe.contentWindow!.location;
+      if (
+        pathname.includes(`/proxy-site/${SCHEDULER_HOST}`) &&
+        (pathname.includes(`/proxy-site/${SCHEDULER_HOST}/login`) || search.includes('error='))
+      ) {
+        /* still on login — expected before sign-in */
+      }
+    } catch {
+      const pulled = pullExternalIntoProxy(iframe.src);
+      if (pulled) {
+        const u = new URL(pulled);
+        navigateIframe(u.pathname + u.search);
+      }
+    }
+  }, [navigateIframe]);
+
   const sampleIframe = useCallback(() => {
+    enforceIframeProxy();
+
     const iframe = iframeRef.current;
     if (!iframe) return;
 
@@ -189,8 +240,7 @@ export default function WebviewBrowser({
       snapshotHistoryRef.current = [...history, snap].slice(-MAX_HISTORY);
     }
 
-    const realUrl = fromProxyPathname(snap.proxyPathname);
-    if (realUrl) setUrlInput(realUrl);
+    setUrlInput(toAbsoluteProxyUrl(snap.proxyPathname));
 
     const detected = detectChapterCompletions(
       snap,
@@ -201,7 +251,7 @@ export default function WebviewBrowser({
     if (detected.length > 0) {
       onChaptersDetected?.(detected);
     }
-  }, [onChaptersDetected]);
+  }, [enforceIframeProxy, onChaptersDetected]);
 
   useEffect(() => {
     const healthUrl = `${import.meta.env.BASE_URL}proxy-site/_health`.replace(
@@ -219,25 +269,34 @@ export default function WebviewBrowser({
       })
       .catch(() => {
         setProxyError(
-          'The reverse proxy is not running on this host. Deploy with Render or run "npm run dev" locally.'
+          'The reverse proxy is not running. Deploy with Render or run "npm run dev" locally.'
         );
       });
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(sampleIframe, 1500);
+    const interval = window.setInterval(sampleIframe, 1200);
     return () => window.clearInterval(interval);
   }, [sampleIframe]);
 
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
     setProxyError(null);
-    navigateIframe(toProxyUrl(urlInput), urlInput);
+    const trimmed = urlInput.trim();
+    if (trimmed.includes('/proxy-site/')) {
+      try {
+        const u = new URL(trimmed);
+        navigateIframe(u.pathname + u.search + u.hash);
+      } catch {
+        navigateIframe(trimmed);
+      }
+      return;
+    }
+    navigateIframe(toProxyUrl(trimmed));
   };
 
   const handleHome = () => {
-    setUrlInput(SCHEDULER_LOGIN_URL);
-    navigateIframe(PROXIED_SCHEDULER_LOGIN_URL, SCHEDULER_LOGIN_URL);
+    navigateIframe(PROXIED_SCHEDULER_LOGIN_URL);
     setProxyError(null);
   };
 
@@ -246,6 +305,7 @@ export default function WebviewBrowser({
   };
 
   const handleIframeLoad = () => {
+    enforceIframeProxy();
     window.setTimeout(sampleIframe, 200);
     try {
       const doc = iframeRef.current?.contentDocument;
@@ -296,7 +356,7 @@ export default function WebviewBrowser({
             type="button"
             onClick={handleHome}
             className="rounded p-1.5 text-slate-600 hover:bg-slate-100"
-            title="Scheduler login"
+            title="Scheduler login (proxied)"
           >
             <Home className="h-3.5 w-3.5" />
           </button>
@@ -306,13 +366,13 @@ export default function WebviewBrowser({
           onSubmit={handleNavigate}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1"
         >
-          <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-600" title="Proxied embed" />
+          <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-600" title="Proxied URL" />
           <input
             type="text"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             className="min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-xs text-slate-800 outline-none"
-            aria-label="Scheduler URL"
+            aria-label="Proxied scheduler URL"
           />
           <button
             type="submit"
@@ -327,7 +387,6 @@ export default function WebviewBrowser({
           onClick={startSignIn}
           disabled={signInBusy}
           className="flex items-center gap-1.5 rounded-lg bg-[#0a304e] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#08253d] disabled:opacity-60"
-          title="Sign in with CWRU SSO (opens popup)"
         >
           <LogIn className="h-3.5 w-3.5" />
           Sign in
@@ -337,7 +396,6 @@ export default function WebviewBrowser({
           type="button"
           onClick={loadProxiedSession}
           className="rounded-lg border border-[#0a304e] px-3 py-1.5 text-xs font-semibold text-[#0a304e] hover:bg-slate-50"
-          title="Load signed-in scheduler into the panel"
         >
           Load session
         </button>
@@ -374,12 +432,12 @@ export default function WebviewBrowser({
             <AlertCircle className="h-10 w-10 text-amber-600" />
             <p className="max-w-md text-sm text-slate-700">{proxyError}</p>
             <a
-              href={PROXIED_CAS_LOGIN_URL}
+              href={toAbsoluteProxyUrl(PROXIED_CAS_LOGIN_URL)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold text-[#0a304e] underline"
             >
-              Open sign-in in a new tab
+              Open proxied sign-in in a new tab
             </a>
           </div>
         )}
@@ -387,9 +445,9 @@ export default function WebviewBrowser({
         {!proxyError && (
           <div className="absolute inset-x-0 top-0 z-20 border-b border-[#0a304e]/20 bg-[#0a304e]/95 px-4 py-2.5 shadow-md">
             <p className="text-center text-xs text-white/90">
-              Use <strong className="font-semibold">Sign in</strong> (popup stays on this site so
-              the panel can share your session). After login, the panel updates automatically — or
-              click <strong className="font-semibold">Load session</strong>.
+              Address bar must show <strong>/proxy-site/</strong> — not bare{' '}
+              <strong>course-scheduler.xlab-cwru.com</strong>. Use <strong>Sign in</strong>, then{' '}
+              <strong>Load session</strong> if needed.
             </p>
           </div>
         )}

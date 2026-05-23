@@ -66,6 +66,31 @@ export function isDirectExternalSchedulerUrl(url: string): boolean {
   }
 }
 
+/** Same-origin absolute URL for a proxied path (client only). */
+export function toAbsoluteProxyUrl(externalOrPath: string): string {
+  const path = externalOrPath.includes('/proxy-site/')
+    ? externalOrPath
+    : toProxyUrl(externalOrPath);
+  if (typeof window === 'undefined') return path;
+  return new URL(path, window.location.origin).href;
+}
+
+/** If href is a bare scheduler/CAS URL, return the proxied absolute URL; otherwise null. */
+export function pullExternalIntoProxy(href: string): string | null {
+  try {
+    const u = new URL(href);
+    if (
+      (u.hostname === 'login.case.edu' || u.hostname === 'course-scheduler.xlab-cwru.com') &&
+      !href.includes('/proxy-site/')
+    ) {
+      return toAbsoluteProxyUrl(href);
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 /** Parse a proxy pathname back into the real external URL. */
 export function fromProxyPathname(pathname: string): string | null {
   const appBase = getAppBase();
