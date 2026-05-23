@@ -37,6 +37,11 @@ export const PROXIED_SCHEDULER_LOGIN_URL = toProxyUrl(
 /** Default scheduler entry point through the proxy. */
 export const DEFAULT_SCHEDULER_PROXY_URL = PROXIED_SCHEDULER_LOGIN_URL;
 
+/** Scheduler home/editor entry through the proxy (post sign-in). */
+export const PROXIED_SCHEDULER_HOME_URL = toProxyUrl(
+  'https://course-scheduler.xlab-cwru.com/'
+);
+
 export const SCHEDULER_SSO_CALLBACK =
   'https://course-scheduler.xlab-cwru.com/api/auth/cwru-sso-callback';
 

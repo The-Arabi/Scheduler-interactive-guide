@@ -9,10 +9,11 @@ import {
   Monitor,
   Tablet,
   LogIn,
-  ExternalLink,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULER_PROXY_URL,
+  PROXIED_CAS_LOGIN_URL,
+  PROXIED_SCHEDULER_HOME_URL,
   PROXIED_SCHEDULER_LOGIN_URL,
   fromProxyPathname,
   toProxyUrl,
@@ -28,19 +29,26 @@ interface WebviewBrowserProps {
 }
 
 type DeviceMode = 'desktop' | 'tablet';
-type EmbedMode = 'proxy' | 'direct';
 
 const MAX_HISTORY = 30;
-const SCHEDULER_ORIGIN = 'https://course-scheduler.xlab-cwru.com';
-const SCHEDULER_LOGIN_URL = `${SCHEDULER_ORIGIN}/login`;
-const SCHEDULER_HOME_URL = `${SCHEDULER_ORIGIN}/`;
+const SCHEDULER_HOST = 'course-scheduler.xlab-cwru.com';
+const SCHEDULER_LOGIN_URL = `https://${SCHEDULER_HOST}/login`;
+
+/** True when the popup has finished SSO on a proxied scheduler page (session cookies on guide origin). */
+function isProxiedSchedulerAuthed(pathname: string, search: string): boolean {
+  return (
+    pathname.includes(`/proxy-site/${SCHEDULER_HOST}/`) &&
+    !pathname.includes('/login') &&
+    !pathname.includes('cwru-sso-callback') &&
+    !search.includes('error=')
+  );
+}
 
 export default function WebviewBrowser({
   initialUrl = SCHEDULER_LOGIN_URL,
   onChaptersDetected,
 }: WebviewBrowserProps) {
   const [urlInput, setUrlInput] = useState(initialUrl);
-  const [embedMode, setEmbedMode] = useState<EmbedMode>('proxy');
   const [iframeUrl, setIframeUrl] = useState(DEFAULT_SCHEDULER_PROXY_URL);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
@@ -52,17 +60,15 @@ export default function WebviewBrowser({
   const snapshotHistoryRef = useRef<ReturnType<typeof readSchedulerSnapshot>[]>([]);
   const popupRef = useRef<Window | null>(null);
   const popupPollRef = useRef<number | null>(null);
+  const popupAuthedPathRef = useRef<string | null>(null);
 
-  const navigateIframe = useCallback(
-    (url: string, mode: EmbedMode, displayUrl?: string) => {
-      setEmbedMode(mode);
-      setIframeUrl(url);
-      setUrlInput(displayUrl ?? url);
-      setIframeKey((k) => k + 1);
-      setTunnelNotice(null);
-    },
-    []
-  );
+  const navigateIframe = useCallback((proxiedUrl: string, displayUrl?: string) => {
+    setIframeUrl(proxiedUrl);
+    setUrlInput(displayUrl ?? fromProxyPathname(proxiedUrl) ?? proxiedUrl);
+    setIframeKey((k) => k + 1);
+    setTunnelNotice(null);
+    setSignInBusy(false);
+  }, []);
 
   const stopPopupPoll = useCallback(() => {
     if (popupPollRef.current != null) {
@@ -73,22 +79,36 @@ export default function WebviewBrowser({
     setSignInBusy(false);
   }, []);
 
-  const applyDirectSchedulerEmbed = useCallback(() => {
-    stopPopupPoll();
-    setTunnelNotice('Signed in — loading the scheduler…');
-    navigateIframe(SCHEDULER_HOME_URL, 'direct', SCHEDULER_HOME_URL);
-    window.setTimeout(() => setTunnelNotice(null), 2500);
-  }, [navigateIframe, stopPopupPoll]);
+  const syncPanelFromPopup = useCallback(
+    (popupLoc: Location, closePopup = true) => {
+      const proxied = `${popupLoc.pathname}${popupLoc.search}${popupLoc.hash}`;
+      popupAuthedPathRef.current = proxied;
+      const real = fromProxyPathname(popupLoc.pathname) ?? initialUrl;
+      if (closePopup) {
+        stopPopupPoll();
+        try {
+          popupRef.current?.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      setTunnelNotice('Signed in — loading the scheduler in the panel…');
+      navigateIframe(proxied, real);
+      window.setTimeout(() => setTunnelNotice(null), 2500);
+    },
+    [initialUrl, navigateIframe, stopPopupPoll]
+  );
 
   const startSignIn = useCallback(() => {
     stopPopupPoll();
+    popupAuthedPathRef.current = null;
     setSignInBusy(true);
     setTunnelNotice(
-      'Complete sign-in in the popup, then close it (or leave it on the scheduler home page).'
+      'Sign in through the popup. When you reach the scheduler, the panel will update automatically.'
     );
 
     const popup = window.open(
-      SCHEDULER_LOGIN_URL,
+      PROXIED_CAS_LOGIN_URL,
       'cwru-scheduler-sso',
       'width=520,height=720,scrollbars=yes,resizable=yes'
     );
@@ -96,7 +116,7 @@ export default function WebviewBrowser({
       setSignInBusy(false);
       setTunnelNotice(null);
       setProxyError(
-        'Popup blocked. Allow popups for this site, or use “Open scheduler in new tab” below.'
+        'Popup blocked. Allow popups for this site, or use “Open in new tab” below.'
       );
       return;
     }
@@ -104,30 +124,51 @@ export default function WebviewBrowser({
 
     popupPollRef.current = window.setInterval(() => {
       const win = popupRef.current;
-      if (!win || win.closed) {
-        applyDirectSchedulerEmbed();
+      if (!win) return;
+
+      if (win.closed) {
+        stopPopupPoll();
+        if (popupAuthedPathRef.current) {
+          navigateIframe(popupAuthedPathRef.current);
+          setTunnelNotice(null);
+        } else {
+          setTunnelNotice(
+            'Popup closed. If you finished signing in, click “Load session” in the toolbar.'
+          );
+        }
         return;
       }
+
       try {
-        const { hostname, pathname } = win.location;
-        if (
-          hostname === 'course-scheduler.xlab-cwru.com' &&
-          pathname !== '/login' &&
-          !pathname.startsWith('/api/auth')
-        ) {
-          applyDirectSchedulerEmbed();
+        if (win.location.origin !== window.location.origin) return;
+        const { pathname, search } = win.location;
+        if (isProxiedSchedulerAuthed(pathname, search)) {
+          syncPanelFromPopup(win.location);
         }
       } catch {
-        /* CAS (login.case.edu) — cross-origin until redirect back */
+        /* ignore */
       }
-    }, 500);
-  }, [applyDirectSchedulerEmbed, stopPopupPoll]);
+    }, 400);
+  }, [navigateIframe, stopPopupPoll, syncPanelFromPopup]);
+
+  const loadProxiedSession = useCallback(() => {
+    const snap = readSchedulerSnapshot(iframeRef.current);
+    if (snap && isProxiedSchedulerAuthed(snap.proxyPathname, '')) {
+      navigateIframe(snap.proxyPathname, snap.realUrl ?? undefined);
+      return;
+    }
+    if (popupAuthedPathRef.current) {
+      navigateIframe(popupAuthedPathRef.current);
+      return;
+    }
+    setTunnelNotice('Loading scheduler…');
+    navigateIframe(PROXIED_SCHEDULER_HOME_URL, `https://${SCHEDULER_HOST}/`);
+    window.setTimeout(() => setTunnelNotice(null), 2000);
+  }, [navigateIframe]);
 
   useEffect(() => () => stopPopupPoll(), [stopPopupPoll]);
 
   const sampleIframe = useCallback(() => {
-    if (embedMode === 'direct') return;
-
     const iframe = iframeRef.current;
     if (!iframe) return;
 
@@ -160,7 +201,7 @@ export default function WebviewBrowser({
     if (detected.length > 0) {
       onChaptersDetected?.(detected);
     }
-  }, [embedMode, onChaptersDetected]);
+  }, [onChaptersDetected]);
 
   useEffect(() => {
     const healthUrl = `${import.meta.env.BASE_URL}proxy-site/_health`.replace(
@@ -191,21 +232,12 @@ export default function WebviewBrowser({
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
     setProxyError(null);
-    const trimmed = urlInput.trim();
-    if (trimmed.includes('course-scheduler.xlab-cwru.com')) {
-      const direct = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
-      navigateIframe(direct, 'direct', direct);
-      return;
-    }
-    navigateIframe(toProxyUrl(trimmed), 'proxy', trimmed);
+    navigateIframe(toProxyUrl(urlInput), urlInput);
   };
 
   const handleHome = () => {
-    if (embedMode === 'direct') {
-      navigateIframe(SCHEDULER_HOME_URL, 'direct', SCHEDULER_HOME_URL);
-    } else {
-      navigateIframe(PROXIED_SCHEDULER_LOGIN_URL, 'proxy', SCHEDULER_LOGIN_URL);
-    }
+    setUrlInput(SCHEDULER_LOGIN_URL);
+    navigateIframe(PROXIED_SCHEDULER_LOGIN_URL, SCHEDULER_LOGIN_URL);
     setProxyError(null);
   };
 
@@ -214,7 +246,6 @@ export default function WebviewBrowser({
   };
 
   const handleIframeLoad = () => {
-    if (embedMode === 'direct') return;
     window.setTimeout(sampleIframe, 200);
     try {
       const doc = iframeRef.current?.contentDocument;
@@ -227,8 +258,6 @@ export default function WebviewBrowser({
       sampleIframe();
     }
   };
-
-  const showSignInBanner = embedMode === 'proxy' && !signInBusy;
 
   const iframeFrameClass =
     deviceMode === 'tablet'
@@ -267,7 +296,7 @@ export default function WebviewBrowser({
             type="button"
             onClick={handleHome}
             className="rounded p-1.5 text-slate-600 hover:bg-slate-100"
-            title="Scheduler home"
+            title="Scheduler login"
           >
             <Home className="h-3.5 w-3.5" />
           </button>
@@ -277,10 +306,7 @@ export default function WebviewBrowser({
           onSubmit={handleNavigate}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1"
         >
-          <Shield
-            className={`h-3.5 w-3.5 shrink-0 ${embedMode === 'direct' ? 'text-slate-400' : 'text-emerald-600'}`}
-            title={embedMode === 'direct' ? 'Direct embed' : 'Proxied embed'}
-          />
+          <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-600" title="Proxied embed" />
           <input
             type="text"
             value={urlInput}
@@ -305,6 +331,15 @@ export default function WebviewBrowser({
         >
           <LogIn className="h-3.5 w-3.5" />
           Sign in
+        </button>
+
+        <button
+          type="button"
+          onClick={loadProxiedSession}
+          className="rounded-lg border border-[#0a304e] px-3 py-1.5 text-xs font-semibold text-[#0a304e] hover:bg-slate-50"
+          title="Load signed-in scheduler into the panel"
+        >
+          Load session
         </button>
 
         <div className="flex rounded border border-slate-200 bg-slate-50 p-0.5">
@@ -339,42 +374,23 @@ export default function WebviewBrowser({
             <AlertCircle className="h-10 w-10 text-amber-600" />
             <p className="max-w-md text-sm text-slate-700">{proxyError}</p>
             <a
-              href={SCHEDULER_LOGIN_URL}
+              href={PROXIED_CAS_LOGIN_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold text-[#0a304e] underline"
             >
-              Open scheduler in a new tab
+              Open sign-in in a new tab
             </a>
           </div>
         )}
 
-        {showSignInBanner && !proxyError && (
-          <div className="absolute inset-x-0 top-0 z-20 border-b border-[#0a304e]/20 bg-[#0a304e]/95 px-4 py-3 shadow-md">
-            <p className="mb-2 text-center text-xs text-white/90">
-              SSO must run on the real scheduler site (not through the proxy). Use the button
-              below — do not use the scheduler&apos;s own SSO link in the preview.
+        {!proxyError && (
+          <div className="absolute inset-x-0 top-0 z-20 border-b border-[#0a304e]/20 bg-[#0a304e]/95 px-4 py-2.5 shadow-md">
+            <p className="text-center text-xs text-white/90">
+              Use <strong className="font-semibold">Sign in</strong> (popup stays on this site so
+              the panel can share your session). After login, the panel updates automatically — or
+              click <strong className="font-semibold">Load session</strong>.
             </p>
-            <div className="flex justify-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={startSignIn}
-                disabled={signInBusy}
-                className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#0a304e] shadow hover:bg-slate-100 disabled:opacity-60"
-              >
-                <LogIn className="h-4 w-4" />
-                {signInBusy ? 'Complete sign-in in popup…' : 'Sign in with CWRU SSO'}
-              </button>
-              <a
-                href={SCHEDULER_LOGIN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg border border-white/40 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
-              >
-                <ExternalLink className="h-4 w-4" />
-                New tab
-              </a>
-            </div>
           </div>
         )}
 
