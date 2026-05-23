@@ -9,6 +9,14 @@ import {
 
 const APP_BASE = process.env.APP_BASE || '/';
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const PROXY_ROUTE_REGEX = new RegExp(
+  `^${escapeRegex(APP_BASE.replace(/\/$/, '') || '')}/proxy-site/([^/]+)(/.*)?$`
+);
+
 function getPublicOrigin(req: express.Request): string {
   if (process.env.PUBLIC_ORIGIN) {
     return process.env.PUBLIC_ORIGIN.replace(/\/$/, '');
@@ -104,18 +112,19 @@ async function startServer() {
       const match = referer.match(/\/proxy-site\/([^/]+)/);
       if (match?.[1]) {
         const host = match[1];
-        return proxyFromExpress(req, res, host, req.originalUrl);
+        const subpath = req.path + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+        return proxyFromExpress(req, res, host, subpath || '/');
       }
     }
     next();
   });
 
   // Main proxy route: /proxy-site/<host>/...
-  app.all(`${APP_BASE}proxy-site/*`, async (req, res, next) => {
-    const parsed = parseProxyPath(req.path, APP_BASE);
-    if (!parsed) return next();
-    if (parsed.host === '_health') return next();
-    await proxyFromExpress(req, res, parsed.host, parsed.subpath);
+  app.all(PROXY_ROUTE_REGEX, async (req, res, next) => {
+    const host = req.params[0];
+    if (host === '_health') return next();
+    const subpath = req.params[1] || '/';
+    await proxyFromExpress(req, res, host, subpath);
   });
 
   if (process.env.NODE_ENV !== 'production') {

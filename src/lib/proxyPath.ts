@@ -6,6 +6,10 @@ const trimSlashes = (s: string) => s.replace(/^\/+|\/+$/g, '');
 /** App base URL from Vite (e.g. "/" or "/Scheduler-interactive-guide/"). */
 export function getAppBase(): string {
   const base = import.meta.env.BASE_URL || '/';
+  // Vite default "./" breaks iframe proxy URLs (resolves relative to the page, not site root)
+  if (base === './' || (base.startsWith('.') && !base.startsWith('..'))) {
+    return '/';
+  }
   return base.endsWith('/') ? base : `${base}/`;
 }
 

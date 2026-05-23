@@ -104,6 +104,7 @@ function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
 
 function rewriteLocationHeader(
   location: string,
+  currentHost: string,
   config: ProxyConfig
 ): string {
   if (location.startsWith('http://') || location.startsWith('https://')) {
@@ -111,6 +112,12 @@ function rewriteLocationHeader(
     if (!config.hosts.has(urlObj.host)) return location;
     const prefix = relativeProxyBase(config, urlObj.host);
     return joinProxyPath(prefix, `${urlObj.pathname}${urlObj.search}${urlObj.hash}`);
+  }
+  // Relative redirects (e.g. Location: /login) must stay under /proxy-site/<host>/
+  // or the iframe navigates to this app's /login and loads the guide inside itself.
+  if (location.startsWith('/')) {
+    if (location.includes('/proxy-site/')) return location;
+    return joinProxyPath(relativeProxyBase(config, currentHost), location);
   }
   return location;
 }
@@ -266,7 +273,7 @@ export async function handleProxyRequest(
     }
 
     if (lowerKey === 'location') {
-      outHeaders[key] = rewriteLocationHeader(value, config);
+      outHeaders[key] = rewriteLocationHeader(value, host, config);
       return;
     }
 
