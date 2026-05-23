@@ -67,7 +67,6 @@ export default function App() {
       id: 1,
       title: 'Portal Overview',
       badge: 'Welcome',
-      pdfPage: 1,
       objectiveText: 'Use the scheduler panel on the right (loads automatically when the proxy is up).',
       isCompleted: (state) => state.completedChapters.includes(1),
       content: (
@@ -94,7 +93,6 @@ export default function App() {
       id: 2,
       title: 'Sign In and SSO Gateways',
       badge: 'Step 1: LOGIN',
-      pdfPage: 1,
       objectiveText: 'Sign in with CWRU SSO in the panel (complete when you reach the scheduler past the login screen).',
       hint: 'If SSO fails in the embed, use the header link to open the live site in a new tab, then return here.',
       isCompleted: (state) => state.completedChapters.includes(2),
@@ -120,7 +118,6 @@ export default function App() {
       id: 3,
       title: 'Introducing Editor View',
       badge: 'Step 2: EDITOR',
-      pdfPage: 1,
       objectiveText: 'Open the Editor view and locate the Sections table (auto-detected when visible).',
       isCompleted: (state) => state.completedChapters.includes(3),
       content: (
@@ -141,7 +138,6 @@ export default function App() {
       id: 4,
       title: 'Action Toolbar & Saves',
       badge: 'Step 3: ACTIONS',
-      pdfPage: 1,
       objectiveText: 'Find the action toolbar: Update Backend, Import/Export Spreadsheet, and Run Solver.',
       isCompleted: (state) => state.completedChapters.includes(4),
       content: (
@@ -174,7 +170,6 @@ export default function App() {
       id: 5,
       title: 'Related Database Tables',
       badge: 'Step 4: RELATED TABLES',
-      pdfPage: 1,
       objectiveText: 'Open the table dropdown and explore Rooms, Timeslots, Constraints, or Meeting Patterns.',
       isCompleted: (state) => state.completedChapters.includes(5),
       content: (
@@ -195,7 +190,6 @@ export default function App() {
       id: 6,
       title: 'Logging Section Notes',
       badge: 'Step 5: AUDIT NOTES',
-      pdfPage: 2,
       objectiveText: "Open a section's notes and add a coordinator notice (e.g. needs override).",
       isCompleted: (state) => state.completedChapters.includes(6),
       content: (
@@ -216,7 +210,6 @@ export default function App() {
       id: 7,
       title: 'Running AI Solver',
       badge: 'Step 6: OPTIMIZATION',
-      pdfPage: 1-2,
       objectiveText: "Run Solver and open the calendar view (auto-detected when you're on the calendar).",
       isCompleted: (state) => state.completedChapters.includes(7),
       content: (
@@ -237,7 +230,6 @@ export default function App() {
       id: 8,
       title: 'Calendar Maps & Overlap Locks',
       badge: 'Step 7: OVERLAP LOCKS',
-      pdfPage: 2,
       objectiveText: 'In calendar mode, try locking sections or locking all manual changes.',
       isCompleted: (state) => state.completedChapters.includes(8),
       content: (
@@ -261,7 +253,6 @@ export default function App() {
       id: 9,
       title: 'Saving Snapshots & Exports',
       badge: 'Step 8: SAVING & DEEP-LINKS',
-      pdfPage: 1-2,
       objectiveText: 'Save a schedule to history or export a PDF report.',
       isCompleted: (state) => state.completedChapters.includes(9),
       content: (

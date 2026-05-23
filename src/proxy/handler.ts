@@ -46,6 +46,14 @@ export const DEFAULT_PROXY_HOSTS = [
 ];
 
 const CAS_HOST = 'login.case.edu';
+const SCHEDULER_HOST = 'course-scheduler.xlab-cwru.com';
+
+/** Next.js client routing uses /editor etc. against page origin (our proxy host), not the scheduler host. */
+function buildNavigationShim(host: string, appBase: string): string {
+  const prefix = joinProxyPath(proxyPrefixForHost(host, appBase), '/').replace(/\/$/, '');
+  const p = JSON.stringify(prefix);
+  return `<script id="xlab-proxy-nav-shim">(function(){var P=${p};function f(u){if(typeof u!=="string")return u;if(u.indexOf(P)===0||u.indexOf("http")===0||u.indexOf("//")===0)return u;if(u.charAt(0)==="/")return P+u;return u;}var h=history;var ps=h.pushState.bind(h),rs=h.replaceState.bind(h);h.pushState=function(s,t,u){return ps(s,t,f(u));};h.replaceState=function(s,t,u){return rs(s,t,f(u));};var l=location,a=l.assign.bind(l),r=l.replace.bind(l);l.assign=function(u){return a(f(u));};l.replace=function(u){return r(f(u));};var of=window.fetch;window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&typeof i==="object"&&i.url)i=new Request(f(i.url),i);return of(i,n);};var p=l.pathname||"";if(p.indexOf("cwru-sso-callback")!==-1){setTimeout(function(){if((l.pathname||"").indexOf("cwru-sso-callback")!==-1)r(f("/"));},2000);}})();</script>`;
+}
 
 /** Apereo CAS lives at /cas/login, not /login (which 404s). */
 export function normalizeProxiedSubpath(host: string, subpath: string): string {
@@ -201,15 +209,18 @@ function rewriteHtmlDocument(
     '/'
   );
   const baseTag = `<base href="${proxyPathPrefix}" />`;
+  const navShim =
+    host === SCHEDULER_HOST ? buildNavigationShim(host, config.appBase) : '';
+  const headInjection = `${navShim}${baseTag}`;
 
   let result = rewriteContentUrls(html, config);
 
   if (result.includes('<head>')) {
-    result = result.replace('<head>', `<head>${baseTag}`);
+    result = result.replace('<head>', `<head>${headInjection}`);
   } else if (result.includes('<HEAD>')) {
-    result = result.replace('<HEAD>', `<HEAD>${baseTag}`);
+    result = result.replace('<HEAD>', `<HEAD>${headInjection}`);
   } else {
-    result = baseTag + result;
+    result = headInjection + result;
   }
 
   // Root-relative asset URLs (Next.js /_next/...) — must include proxy prefix

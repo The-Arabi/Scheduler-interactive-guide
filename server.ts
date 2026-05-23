@@ -108,11 +108,21 @@ async function startServer() {
     }
 
     const referer = req.headers.referer;
-    if (referer && referer.includes('/proxy-site/')) {
-      const match = referer.match(/\/proxy-site\/([^/]+)/);
+    const fetchSite = req.headers['sec-fetch-site'];
+    const isProxiedReferer =
+      typeof referer === 'string' && referer.includes('/proxy-site/');
+    const isSameOriginFetch =
+      fetchSite === 'same-origin' &&
+      typeof referer === 'string' &&
+      referer.includes('/proxy-site/');
+
+    if (isProxiedReferer || isSameOriginFetch) {
+      const ref = referer as string;
+      const match = ref.match(/\/proxy-site\/([^/]+)/);
       if (match?.[1]) {
         const host = match[1];
-        const subpath = req.path + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+        const subpath =
+          req.path + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
         return proxyFromExpress(req, res, host, subpath || '/');
       }
     }

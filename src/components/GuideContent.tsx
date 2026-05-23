@@ -11,7 +11,6 @@ export interface Chapter {
   id: number;
   title: string;
   badge: string;
-  pdfPage: number;
   objectiveText: string;
   isCompleted: (state: any) => boolean;
   content: React.ReactNode;
@@ -57,7 +56,6 @@ export default function GuideContent({
             Chapter {activeChapterIdx + 1} of {chapters.length}
           </span>
           <span className="px-2.5 py-1 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded border border-gray-200 uppercase">
-            PDF Page {currentChapter.pdfPage}
           </span>
         </div>
         
