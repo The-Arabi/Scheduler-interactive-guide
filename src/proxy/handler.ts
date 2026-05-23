@@ -90,13 +90,15 @@ l.assign=function(u){return a(f(u));};
 l.replace=function(u){return r(f(u));};
 var of=window.fetch;
 window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&i.url)i=new Request(f(i.url),i);return of(i,n);};
-if((l.pathname||"").indexOf("cwru-sso-callback")!==-1){
-  setTimeout(function(){if((l.pathname||"").indexOf("cwru-sso-callback")!==-1)r(f("/"));},1500);
+if((l.pathname||"").indexOf("cwru-sso-callback")!==-1&&(l.search||"").indexOf("ticket=")===-1){
+  setTimeout(function(){
+    if((location.pathname||"").indexOf("cwru-sso-callback")!==-1&&(location.search||"").indexOf("ticket=")===-1)r(f("/login"));
+  },200);
 }
 })();</script>`;
 }
 
-/** After CAS auth, send the browser to the proxied scheduler callback (service= param). */
+/** Rewrite CAS forms/actions only — never navigate to the service URL without a CAS ticket. */
 function buildCasSsoContinueScript(appBase: string): string {
   const schedulerPx = joinProxyPath(
     proxyPrefixForHost(SCHEDULER_HOST, appBase),
@@ -118,43 +120,22 @@ function absToProxy(abs){
     return px+path+u.search+u.hash;
   }catch(e){return null;}
 }
-function serviceUrl(){
-  var q=new URLSearchParams(location.search);
-  var s=q.get("service");
-  if(s)return s;
-  var el=document.querySelector('input[name="service"]');
-  return el?el.value:null;
-}
-function go(){
-  var s=serviceUrl();
-  if(!s)return;
-  var t=absToProxy(s);
-  if(t)location.replace(t);
-}
 function rewriteForms(){
   document.querySelectorAll("form[action]").forEach(function(f){
     var a=f.getAttribute("action");
     if(!a)return;
     var p=absToProxy(a.indexOf("http")===0?a:(location.origin+a));
     if(p)f.setAttribute("action",p);
-    if(p&&f.id==="fm1"&&f.method&&f.method.toLowerCase()==="post"){
-      var t=f.querySelector('input[name="service"]');
-      if(t&&t.value){var u=absToProxy(t.value);if(u)setTimeout(function(){location.replace(u);},50);}
-    }
+  });
+  document.querySelectorAll("a[href]").forEach(function(a){
+    var h=a.getAttribute("href");
+    if(!h||h.indexOf("http")!==0)return;
+    var p=absToProxy(h);
+    if(p)a.setAttribute("href",p);
   });
 }
-function maybeContinue(){
-  if(document.querySelector(".alert-danger,.errors,#loginErrors"))return;
-  rewriteForms();
-  var pwd=document.querySelector('input[name="password"],input[type="password"]');
-  var txt=(document.body&&document.body.innerText)||"";
-  if(txt.indexOf("You have successfully logged in")!==-1){go();return;}
-  if(!pwd||pwd.offsetParent===null||pwd.disabled)go();
-}
-document.addEventListener("DOMContentLoaded",function(){rewriteForms();maybeContinue();});
-setTimeout(maybeContinue,400);
-setTimeout(maybeContinue,1200);
-setTimeout(maybeContinue,2500);
+document.addEventListener("DOMContentLoaded",rewriteForms);
+setTimeout(rewriteForms,300);
 })();</script>`;
 }
 
