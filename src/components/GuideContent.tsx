@@ -55,8 +55,6 @@ export default function GuideContent({
           <span className="text-xs font-bold text-[#0a304e] tracking-widest uppercase">
             Chapter {activeChapterIdx + 1} of {chapters.length}
           </span>
-          <span className="px-2.5 py-1 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded border border-gray-200 uppercase">
-          </span>
         </div>
         
         {/* Progress Bar */}
