@@ -1,8 +1,22 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 console.log('[Pre-build diagnostic] Initiating build checks...');
 console.log('[Pre-build diagnostic] Current working directory:', process.cwd());
+
+try {
+  console.log('[Pre-build Git Diagnostic] Current Branch / Commit:');
+  console.log(execSync('git log -1 --oneline || echo "No git log"', { encoding: 'utf-8' }).trim());
+  
+  console.log('[Pre-build Git Diagnostic] git status --short:');
+  console.log(execSync('git status --short || echo "No git status"', { encoding: 'utf-8' }));
+
+  console.log('[Pre-build Git Diagnostic] git ls-files:');
+  console.log(execSync('git ls-files || echo "No git ls-files"', { encoding: 'utf-8' }));
+} catch (e) {
+  console.error('[Pre-build Git Diagnostic] Error running git commands:', e.message);
+}
 
 // Helper to list files recursively up to 2 levels
 function listDir(dir, depth = 0) {
@@ -20,6 +34,7 @@ function listDir(dir, depth = 0) {
     console.warn(`[Pre-build] Failed to read ${dir}:`, err.message);
   }
 }
+
 
 // Rename case-mismatched folders/files to match lowercase standards on Linux
 const uppercaseSrc = path.join(process.cwd(), 'Src');
