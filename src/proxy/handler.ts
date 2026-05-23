@@ -90,11 +90,6 @@ l.assign=function(u){return a(f(u));};
 l.replace=function(u){return r(f(u));};
 var of=window.fetch;
 window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&i.url)i=new Request(f(i.url),i);return of(i,n);};
-if((l.pathname||"").indexOf("cwru-sso-callback")!==-1&&(l.search||"").indexOf("ticket=")===-1){
-  setTimeout(function(){
-    if((location.pathname||"").indexOf("cwru-sso-callback")!==-1&&(location.search||"").indexOf("ticket=")===-1)r(f("/login"));
-  },200);
-}
 })();</script>`;
 }
 
@@ -303,12 +298,14 @@ function rewriteHtmlDocument(
 
   let result = rewriteContentUrls(html, config);
 
-  if (result.includes('<head>')) {
-    result = result.replace('<head>', `<head>${headInjection}`);
-  } else if (result.includes('<HEAD>')) {
-    result = result.replace('<HEAD>', `<HEAD>${headInjection}`);
-  } else {
-    result = headInjection + result;
+  if (!result.includes('id="xlab-proxy-nav-shim"') && !result.includes('id="xlab-cas-sso-continue"')) {
+    if (/<\/head>/i.test(result)) {
+      result = result.replace(/<\/head>/i, `${headInjection}</head>`);
+    } else if (/<head[\s>]/i.test(result)) {
+      result = result.replace(/<head([^>]*)>/i, `<head$1>${headInjection}`);
+    } else {
+      result = headInjection + result;
+    }
   }
 
   // Root-relative asset URLs (Next.js /_next/...) — must include proxy prefix

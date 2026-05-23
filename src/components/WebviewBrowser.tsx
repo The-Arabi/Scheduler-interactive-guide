@@ -15,7 +15,6 @@ import {
   PROXIED_CAS_LOGIN_URL,
   PROXIED_SCHEDULER_LOGIN_URL,
   fromProxyPathname,
-  isDirectExternalSchedulerUrl,
   toProxyUrl,
 } from '../lib/proxyPath';
 import {
@@ -31,6 +30,15 @@ interface WebviewBrowserProps {
 type DeviceMode = 'desktop' | 'tablet';
 
 const MAX_HISTORY = 30;
+const SCHEDULER_HOST = 'course-scheduler.xlab-cwru.com';
+
+function isSchedulerPastLogin(pathname: string): boolean {
+  return (
+    pathname.includes(`/proxy-site/${SCHEDULER_HOST}/`) &&
+    !pathname.includes('/login') &&
+    !pathname.includes('cwru-sso-callback')
+  );
+}
 
 export default function WebviewBrowser({
   initialUrl = 'https://course-scheduler.xlab-cwru.com/login',
@@ -42,36 +50,101 @@ export default function WebviewBrowser({
   const [iframeKey, setIframeKey] = useState(0);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [tunnelNotice, setTunnelNotice] = useState<string | null>(null);
-  const [showCasContinue, setShowCasContinue] = useState(false);
+  const [showSignInHelp, setShowSignInHelp] = useState(false);
+  const [signInBusy, setSignInBusy] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const snapshotHistoryRef = useRef<ReturnType<typeof readSchedulerSnapshot>[]>([]);
-  const recoveringRef = useRef(false);
+  const popupRef = useRef<Window | null>(null);
+  const popupPollRef = useRef<number | null>(null);
 
-  const pullIntoProxy = useCallback((externalUrl: string) => {
-    const proxied = isDirectExternalSchedulerUrl(externalUrl)
-      ? toProxyUrl(externalUrl)
-      : externalUrl.includes('/proxy-site/')
-        ? externalUrl
-        : toProxyUrl(externalUrl);
-    recoveringRef.current = true;
-    setTunnelNotice('Routing through the embedded proxy — stay in this panel.');
-    setIframeUrl(proxied);
-    setUrlInput(externalUrl);
+  const navigateIframe = useCallback((proxiedUrl: string, realUrl?: string) => {
+    setIframeUrl(proxiedUrl);
+    if (realUrl) setUrlInput(realUrl);
     setIframeKey((k) => k + 1);
-    window.setTimeout(() => {
-      recoveringRef.current = false;
-      setTunnelNotice(null);
-    }, 2000);
+    setShowSignInHelp(false);
   }, []);
+
+  const stopPopupPoll = useCallback(() => {
+    if (popupPollRef.current != null) {
+      window.clearInterval(popupPollRef.current);
+      popupPollRef.current = null;
+    }
+    popupRef.current = null;
+    setSignInBusy(false);
+  }, []);
+
+  const finishSignInFromPopup = useCallback(
+    (popupLocation: Location) => {
+      const proxied = `${popupLocation.pathname}${popupLocation.search}${popupLocation.hash}`;
+      const real = fromProxyPathname(popupLocation.pathname) ?? urlInput;
+      stopPopupPoll();
+      try {
+        popupRef.current?.close();
+      } catch {
+        /* ignore */
+      }
+      setTunnelNotice('Sign-in complete — loading the scheduler…');
+      navigateIframe(proxied, real);
+      window.setTimeout(() => setTunnelNotice(null), 2500);
+    },
+    [navigateIframe, stopPopupPoll, urlInput]
+  );
+
+  const startPopupSignIn = useCallback(() => {
+    stopPopupPoll();
+    setSignInBusy(true);
+    setTunnelNotice('Sign in using the popup window, then return here.');
+
+    const popup = window.open(
+      PROXIED_CAS_LOGIN_URL,
+      'cwru-sso',
+      'width=520,height=720,scrollbars=yes,resizable=yes'
+    );
+    if (!popup) {
+      setSignInBusy(false);
+      setTunnelNotice(null);
+      setProxyError(
+        'Popup blocked. Allow popups for this site, or use “Open scheduler in a new tab” below.'
+      );
+      return;
+    }
+    popupRef.current = popup;
+
+    popupPollRef.current = window.setInterval(() => {
+      if (!popupRef.current || popupRef.current.closed) {
+        stopPopupPoll();
+        setTunnelNotice(null);
+        setIframeKey((k) => k + 1);
+        return;
+      }
+      try {
+        const loc = popupRef.current.location;
+        if (isSchedulerPastLogin(loc.pathname)) {
+          finishSignInFromPopup(loc);
+        }
+      } catch {
+        /* still on CAS or another origin */
+      }
+    }, 400);
+  }, [finishSignInFromPopup, stopPopupPoll]);
+
+  useEffect(() => () => stopPopupPoll(), [stopPopupPoll]);
 
   const continueToScheduler = useCallback(() => {
-    setShowCasContinue(false);
-    setTunnelNotice('Completing sign-in and opening the scheduler…');
-    setIframeUrl(PROXIED_CAS_LOGIN_URL);
-    setIframeKey((k) => k + 1);
-    window.setTimeout(() => setTunnelNotice(null), 2500);
-  }, []);
+    const snap = readSchedulerSnapshot(iframeRef.current);
+    if (snap && isSchedulerPastLogin(snap.proxyPathname)) {
+      navigateIframe(snap.proxyPathname, snap.realUrl ?? urlInput);
+      return;
+    }
+    if (snap?.host === 'login.case.edu') {
+      startPopupSignIn();
+      return;
+    }
+    setTunnelNotice('Opening scheduler login…');
+    navigateIframe(PROXIED_SCHEDULER_LOGIN_URL, initialUrl);
+    window.setTimeout(() => setTunnelNotice(null), 2000);
+  }, [initialUrl, navigateIframe, startPopupSignIn, urlInput]);
 
   const sampleIframe = useCallback(() => {
     const iframe = iframeRef.current;
@@ -84,22 +157,13 @@ export default function WebviewBrowser({
       snap = null;
     }
 
-    if (!snap) {
-      setShowCasContinue(true);
-      if (recoveringRef.current) return;
-      if (isDirectExternalSchedulerUrl(urlInput)) {
-        pullIntoProxy(urlInput);
-      } else {
-        pullIntoProxy(
-          'https://login.case.edu/cas/login?service=https://course-scheduler.xlab-cwru.com/api/auth/cwru-sso-callback'
-        );
-      }
-      return;
-    }
+    if (!snap) return;
 
-    setShowCasContinue(
-      snap.host === 'login.case.edu' && snap.path.includes('/cas/login')
-    );
+    const onCas =
+      snap.host === 'login.case.edu' && snap.path.includes('/cas/login');
+    const onSchedulerLogin =
+      snap.host === SCHEDULER_HOST && snap.path.includes('/login');
+    setShowSignInHelp(onCas || onSchedulerLogin);
 
     const history = snapshotHistoryRef.current.filter(Boolean) as NonNullable<
       ReturnType<typeof readSchedulerSnapshot>
@@ -121,7 +185,7 @@ export default function WebviewBrowser({
     if (detected.length > 0) {
       onChaptersDetected?.(detected);
     }
-  }, [onChaptersDetected, pullIntoProxy, urlInput]);
+  }, [onChaptersDetected]);
 
   useEffect(() => {
     const healthUrl = `${import.meta.env.BASE_URL}proxy-site/_health`.replace(
@@ -152,20 +216,13 @@ export default function WebviewBrowser({
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
     setProxyError(null);
-    if (isDirectExternalSchedulerUrl(urlInput)) {
-      pullIntoProxy(urlInput);
-      return;
-    }
-    setIframeUrl(toProxyUrl(urlInput));
-    setIframeKey((k) => k + 1);
+    navigateIframe(toProxyUrl(urlInput), urlInput);
   };
 
   const handleHome = () => {
-    setUrlInput('https://course-scheduler.xlab-cwru.com/login');
-    setIframeUrl(PROXIED_SCHEDULER_LOGIN_URL);
+    setUrlInput(initialUrl);
+    navigateIframe(PROXIED_SCHEDULER_LOGIN_URL, initialUrl);
     setProxyError(null);
-    setShowCasContinue(false);
-    setIframeKey((k) => k + 1);
   };
 
   const handleReload = () => {
@@ -291,15 +348,23 @@ export default function WebviewBrowser({
           </div>
         )}
 
-        {showCasContinue && !proxyError && (
-          <div className="absolute inset-x-0 top-0 z-20 flex justify-center p-3 pointer-events-none">
+        {showSignInHelp && !proxyError && (
+          <div className="absolute inset-x-0 top-0 z-20 flex justify-center gap-2 p-3 pointer-events-none flex-wrap">
+            <button
+              type="button"
+              onClick={startPopupSignIn}
+              disabled={signInBusy}
+              className="pointer-events-auto flex items-center gap-2 rounded-lg bg-[#0a304e] px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-[#08253d] disabled:opacity-60"
+            >
+              <LogIn className="h-4 w-4" />
+              {signInBusy ? 'Sign-in window open…' : 'Sign in with CWRU SSO'}
+            </button>
             <button
               type="button"
               onClick={continueToScheduler}
-              className="pointer-events-auto flex items-center gap-2 rounded-lg bg-[#0a304e] px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-[#08253d]"
+              className="pointer-events-auto rounded-lg border border-[#0a304e] bg-white px-4 py-2.5 text-sm font-semibold text-[#0a304e] shadow-lg hover:bg-slate-50"
             >
-              <LogIn className="h-4 w-4" />
-              Continue to scheduler
+              Continue in panel
             </button>
           </div>
         )}
@@ -312,7 +377,7 @@ export default function WebviewBrowser({
             onLoad={handleIframeLoad}
             className="h-full w-full border-0 bg-white"
             title="CWRU Course Scheduler"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
           />
         </div>
       </div>
