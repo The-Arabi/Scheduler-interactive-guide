@@ -29,10 +29,16 @@ export function toProxyUrl(externalUrl: string): string {
   }
 }
 
-/** Default scheduler entry point through the proxy. */
-export const DEFAULT_SCHEDULER_PROXY_URL = toProxyUrl(
-  'https://course-scheduler.xlab-cwru.com/'
+/** Scheduler login page — starts SSO through the proxy. */
+export const PROXIED_SCHEDULER_LOGIN_URL = toProxyUrl(
+  'https://course-scheduler.xlab-cwru.com/login'
 );
+
+/** Default scheduler entry point through the proxy. */
+export const DEFAULT_SCHEDULER_PROXY_URL = PROXIED_SCHEDULER_LOGIN_URL;
+
+export const SCHEDULER_SSO_CALLBACK =
+  'https://course-scheduler.xlab-cwru.com/api/auth/cwru-sso-callback';
 
 /** CWRU CAS login with scheduler SSO callback (must stay on /proxy-site/ path). */
 export const PROXIED_CAS_LOGIN_URL = toProxyUrl(

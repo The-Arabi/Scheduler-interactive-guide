@@ -8,16 +8,16 @@ import {
   AlertCircle,
   Monitor,
   Tablet,
+  LogIn,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULER_PROXY_URL,
+  PROXIED_CAS_LOGIN_URL,
+  PROXIED_SCHEDULER_LOGIN_URL,
   fromProxyPathname,
   isDirectExternalSchedulerUrl,
   toProxyUrl,
 } from '../lib/proxyPath';
-
-const CAS_LOGIN_EXTERNAL =
-  'https://login.case.edu/cas/login?service=https://course-scheduler.xlab-cwru.com/api/auth/cwru-sso-callback';
 import {
   detectChapterCompletions,
   readSchedulerSnapshot,
@@ -33,7 +33,7 @@ type DeviceMode = 'desktop' | 'tablet';
 const MAX_HISTORY = 30;
 
 export default function WebviewBrowser({
-  initialUrl = 'https://course-scheduler.xlab-cwru.com/',
+  initialUrl = 'https://course-scheduler.xlab-cwru.com/login',
   onChaptersDetected,
 }: WebviewBrowserProps) {
   const [urlInput, setUrlInput] = useState(initialUrl);
@@ -42,6 +42,7 @@ export default function WebviewBrowser({
   const [iframeKey, setIframeKey] = useState(0);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [tunnelNotice, setTunnelNotice] = useState<string | null>(null);
+  const [showCasContinue, setShowCasContinue] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const snapshotHistoryRef = useRef<ReturnType<typeof readSchedulerSnapshot>[]>([]);
@@ -54,14 +55,22 @@ export default function WebviewBrowser({
         ? externalUrl
         : toProxyUrl(externalUrl);
     recoveringRef.current = true;
-    setTunnelNotice('Routing sign-in through the embedded proxy…');
+    setTunnelNotice('Routing through the embedded proxy — stay in this panel.');
     setIframeUrl(proxied);
     setUrlInput(externalUrl);
     setIframeKey((k) => k + 1);
     window.setTimeout(() => {
       recoveringRef.current = false;
       setTunnelNotice(null);
-    }, 1500);
+    }, 2000);
+  }, []);
+
+  const continueToScheduler = useCallback(() => {
+    setShowCasContinue(false);
+    setTunnelNotice('Completing sign-in and opening the scheduler…');
+    setIframeUrl(PROXIED_CAS_LOGIN_URL);
+    setIframeKey((k) => k + 1);
+    window.setTimeout(() => setTunnelNotice(null), 2500);
   }, []);
 
   const sampleIframe = useCallback(() => {
@@ -76,14 +85,21 @@ export default function WebviewBrowser({
     }
 
     if (!snap) {
+      setShowCasContinue(true);
       if (recoveringRef.current) return;
       if (isDirectExternalSchedulerUrl(urlInput)) {
         pullIntoProxy(urlInput);
-      } else if (iframeUrl.includes('/proxy-site/')) {
-        pullIntoProxy(CAS_LOGIN_EXTERNAL);
+      } else {
+        pullIntoProxy(
+          'https://login.case.edu/cas/login?service=https://course-scheduler.xlab-cwru.com/api/auth/cwru-sso-callback'
+        );
       }
       return;
     }
+
+    setShowCasContinue(
+      snap.host === 'login.case.edu' && snap.path.includes('/cas/login')
+    );
 
     const history = snapshotHistoryRef.current.filter(Boolean) as NonNullable<
       ReturnType<typeof readSchedulerSnapshot>
@@ -105,7 +121,7 @@ export default function WebviewBrowser({
     if (detected.length > 0) {
       onChaptersDetected?.(detected);
     }
-  }, [onChaptersDetected, pullIntoProxy, urlInput, iframeUrl]);
+  }, [onChaptersDetected, pullIntoProxy, urlInput]);
 
   useEffect(() => {
     const healthUrl = `${import.meta.env.BASE_URL}proxy-site/_health`.replace(
@@ -145,9 +161,10 @@ export default function WebviewBrowser({
   };
 
   const handleHome = () => {
-    setUrlInput(initialUrl);
-    setIframeUrl(DEFAULT_SCHEDULER_PROXY_URL);
+    setUrlInput('https://course-scheduler.xlab-cwru.com/login');
+    setIframeUrl(PROXIED_SCHEDULER_LOGIN_URL);
     setProxyError(null);
+    setShowCasContinue(false);
     setIframeKey((k) => k + 1);
   };
 
@@ -206,7 +223,7 @@ export default function WebviewBrowser({
             type="button"
             onClick={handleHome}
             className="rounded p-1.5 text-slate-600 hover:bg-slate-100"
-            title="Scheduler home"
+            title="Scheduler login"
           >
             <Home className="h-3.5 w-3.5" />
           </button>
@@ -273,6 +290,20 @@ export default function WebviewBrowser({
             </a>
           </div>
         )}
+
+        {showCasContinue && !proxyError && (
+          <div className="absolute inset-x-0 top-0 z-20 flex justify-center p-3 pointer-events-none">
+            <button
+              type="button"
+              onClick={continueToScheduler}
+              className="pointer-events-auto flex items-center gap-2 rounded-lg bg-[#0a304e] px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-[#08253d]"
+            >
+              <LogIn className="h-4 w-4" />
+              Continue to scheduler
+            </button>
+          </div>
+        )}
+
         <div className={`absolute inset-0 ${iframeFrameClass}`}>
           <iframe
             ref={iframeRef}

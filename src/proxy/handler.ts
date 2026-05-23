@@ -96,6 +96,68 @@ if((l.pathname||"").indexOf("cwru-sso-callback")!==-1){
 })();</script>`;
 }
 
+/** After CAS auth, send the browser to the proxied scheduler callback (service= param). */
+function buildCasSsoContinueScript(appBase: string): string {
+  const schedulerPx = joinProxyPath(
+    proxyPrefixForHost(SCHEDULER_HOST, appBase),
+    '/'
+  ).replace(/\/$/, '');
+  const casPx = joinProxyPath(proxyPrefixForHost(CAS_HOST, appBase), '/').replace(
+    /\/$/,
+    ''
+  );
+  return `<script id="xlab-cas-sso-continue">(function(){
+var SP=${JSON.stringify(schedulerPx)},CP=${JSON.stringify(casPx)};
+function absToProxy(abs){
+  try{
+    var u=new URL(abs);
+    if(u.hostname!=="course-scheduler.xlab-cwru.com"&&u.hostname!=="login.case.edu")return null;
+    var px=u.hostname==="login.case.edu"?CP:SP;
+    var path=u.pathname;
+    if(u.hostname==="login.case.edu"&&(path==="/login"||path.indexOf("/login?")===0))path=path.replace(/^\\/login/,"/cas/login");
+    return px+path+u.search+u.hash;
+  }catch(e){return null;}
+}
+function serviceUrl(){
+  var q=new URLSearchParams(location.search);
+  var s=q.get("service");
+  if(s)return s;
+  var el=document.querySelector('input[name="service"]');
+  return el?el.value:null;
+}
+function go(){
+  var s=serviceUrl();
+  if(!s)return;
+  var t=absToProxy(s);
+  if(t)location.replace(t);
+}
+function rewriteForms(){
+  document.querySelectorAll("form[action]").forEach(function(f){
+    var a=f.getAttribute("action");
+    if(!a)return;
+    var p=absToProxy(a.indexOf("http")===0?a:(location.origin+a));
+    if(p)f.setAttribute("action",p);
+    if(p&&f.id==="fm1"&&f.method&&f.method.toLowerCase()==="post"){
+      var t=f.querySelector('input[name="service"]');
+      if(t&&t.value){var u=absToProxy(t.value);if(u)setTimeout(function(){location.replace(u);},50);}
+    }
+  });
+}
+function maybeContinue(){
+  if(document.querySelector(".alert-danger,.errors,#loginErrors"))return;
+  rewriteForms();
+  var pwd=document.querySelector('input[name="password"],input[type="password"]');
+  var txt=(document.body&&document.body.innerText)||"";
+  if(txt.indexOf("You have successfully logged in")!==-1){go();return;}
+  if(!pwd||pwd.offsetParent===null||pwd.disabled)go();
+}
+document.addEventListener("DOMContentLoaded",function(){rewriteForms();maybeContinue();});
+setTimeout(maybeContinue,400);
+setTimeout(maybeContinue,1200);
+setTimeout(maybeContinue,2500);
+})();</script>`;
+}
+
 /** Apereo CAS lives at /cas/login, not /login (which 404s). */
 export function normalizeProxiedSubpath(host: string, subpath: string): string {
   if (host !== CAS_HOST) return subpath;
@@ -254,7 +316,9 @@ function rewriteHtmlDocument(
     host === SCHEDULER_HOST || host === CAS_HOST
       ? buildNavigationShim(config.appBase)
       : '';
-  const headInjection = `${navShim}${baseTag}`;
+  const casContinue =
+    host === CAS_HOST ? buildCasSsoContinueScript(config.appBase) : '';
+  const headInjection = `${navShim}${casContinue}${baseTag}`;
 
   let result = rewriteContentUrls(html, config);
 
