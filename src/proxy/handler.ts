@@ -90,6 +90,16 @@ l.assign=function(u){return a(f(u));};
 l.replace=function(u){return r(f(u));};
 var of=window.fetch;
 window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&i.url)i=new Request(f(i.url),i);return of(i,n);};
+var oo=window.open;
+window.open=function(u,t,g){if(typeof u==="string")u=f(u);return oo.call(window,u,t,g);};
+document.addEventListener("click",function(e){
+  var el=e.target&&e.target.closest?e.target.closest("a[href]"):null;
+  if(!el)return;
+  var h=el.getAttribute("href");
+  if(!h)return;
+  var n=f(h);
+  if(n!==h){e.preventDefault();e.stopPropagation();location.assign(n);}
+},true);
 })();</script>`;
 }
 
@@ -192,6 +202,10 @@ export function relativeProxyBase(config: ProxyConfig, targetHost: string): stri
 }
 
 function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
+  const cookieName = cookieVal.split('=')[0]?.trim() ?? '';
+  if (cookieName.startsWith('__Host-') || cookieName.startsWith('__Secure-')) {
+    return cookieVal;
+  }
   let cleaned = cookieVal.replace(/;\s*domain=[^;]+/gi, '');
   if (!/;\s*path=/i.test(cleaned)) {
     cleaned += `; Path=${proxyPathPrefix}`;
@@ -393,10 +407,14 @@ export async function handleProxyRequest(
     headers.set('referer', `https://${host}/`);
   }
 
+  const requestBody: BodyInit | undefined = ctx.body
+    ? new Uint8Array(ctx.body).buffer
+    : undefined;
+
   const response = await fetch(targetUrl, {
     method: ctx.method,
     headers,
-    body: ctx.body,
+    body: requestBody,
     redirect: 'manual',
   });
 

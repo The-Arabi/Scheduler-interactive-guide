@@ -34,10 +34,18 @@ function applyProxyResponse(
   res: express.Response,
   proxyRes: Awaited<ReturnType<typeof handleProxyRequest>>
 ) {
+  res.status(proxyRes.status);
   for (const [key, value] of Object.entries(proxyRes.headers)) {
+    const lower = key.toLowerCase();
+    if (lower === 'set-cookie') {
+      const cookies = Array.isArray(value) ? value : [value];
+      for (const cookie of cookies) {
+        res.appendHeader('Set-Cookie', cookie);
+      }
+      continue;
+    }
     res.setHeader(key, value);
   }
-  res.status(proxyRes.status);
   if (Buffer.isBuffer(proxyRes.body)) {
     res.send(proxyRes.body);
   } else {
