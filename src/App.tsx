@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   CheckCircle, Key, Lock, Sparkles, RefreshCw, BookOpen, ExternalLink, HelpCircle
 } from 'lucide-react';
@@ -33,6 +33,8 @@ export default function App() {
     }, 4000);
   };
 
+  const notifiedChaptersRef = useRef<Set<number>>(new Set([1]));
+
   const handleToggleComplete = (id: number) => {
     setCompletedChapters((prev) => {
       if (prev.includes(id)) {
@@ -55,6 +57,7 @@ export default function App() {
   const handleResetTraining = () => {
     setCompletedChapters([1]);
     setActiveChapterIdx(0);
+    notifiedChaptersRef.current = new Set([1]);
     addNotification('Interactive instruction milestones have been reset.', 'info');
   };
 
@@ -65,7 +68,7 @@ export default function App() {
       title: 'Portal Overview',
       badge: 'Welcome',
       pdfPage: 1,
-      objectiveText: 'Interact with the scheduler webview panel on the right, then select Next Step.',
+      objectiveText: 'Use the scheduler panel on the right (loads automatically when the proxy is up).',
       isCompleted: (state) => state.completedChapters.includes(1),
       content: (
         <div className="space-y-4">
@@ -92,22 +95,22 @@ export default function App() {
       title: 'Sign In and SSO Gateways',
       badge: 'Step 1: LOGIN',
       pdfPage: 1,
-      objectiveText: "Attempt to authorize your session on the live Course Scheduler. Click CWRU Single Sign-On and click mark checked once confirmed.",
-      hint: "If Case SSO limits embedding in cross-origin frames on your browser, click 'Launch Live Site' to open it in a raw workspace.",
+      objectiveText: 'Sign in with CWRU SSO in the panel (complete when you reach the scheduler past the login screen).',
+      hint: 'If SSO fails in the embed, use the header link to open the live site in a new tab, then return here.',
       isCompleted: (state) => state.completedChapters.includes(2),
       content: (
         <div className="space-y-4">
-          <div className="p-3 bg-slate-100 rounded border border-slate-205 flex items-center gap-2 mb-2 font-mono text-[11px] text-[#0a304e]">
+          <div className="p-3 bg-slate-100 rounded border border-slate-200 flex items-center gap-2 mb-2 font-mono text-[11px] text-[#0a304e]">
             <Key className="w-4 h-4 text-[#0a304e] shrink-0" />
             <span>PORTAL BASE: https://course-scheduler.xlab-cwru.com/</span>
           </div>
-          <p className="text-slate-705 italic leading-relaxed text-sm">
+          <p className="text-slate-600 italic leading-relaxed text-sm">
             "Go to the portal, and sign in using your credentials."
           </p>
           <p className="leading-relaxed">
             The app utilizes Case Western Reserve University Single Sign-On (SSO) protocols. This auto-verifies coordinator permissions and protects official curriculum schedules from external overrides.
           </p>
-          <div className="p-3 bg-amber-50 rounded border border-amber-150 text-xs text-amber-900 font-semibold leading-normal">
+          <div className="p-3 bg-amber-50 rounded border border-amber-200 text-xs text-amber-900 font-semibold leading-normal">
             "Your authenticated coordinator session must persist. Be ready to clear Duo Mobile Multi-Factor Authentication protocols on your primary device."
           </div>
         </div>
@@ -118,7 +121,7 @@ export default function App() {
       title: 'Introducing Editor View',
       badge: 'Step 2: EDITOR',
       pdfPage: 1,
-      objectiveText: 'Open the Editor Dashboard, locate the "Sections" data grid, inspect its columns, and check this step as Done.',
+      objectiveText: 'Open the Editor view and locate the Sections table (auto-detected when visible).',
       isCompleted: (state) => state.completedChapters.includes(3),
       content: (
         <div className="space-y-4">
@@ -139,7 +142,7 @@ export default function App() {
       title: 'Action Toolbar & Saves',
       badge: 'Step 3: ACTIONS',
       pdfPage: 1,
-      objectiveText: "Familiarize yourself with the main tools: Update Backend, Import Spreadsheet, and Run Solver. Click Done.",
+      objectiveText: 'Find the action toolbar: Update Backend, Import/Export Spreadsheet, and Run Solver.',
       isCompleted: (state) => state.completedChapters.includes(4),
       content: (
         <div className="space-y-4">
@@ -172,11 +175,11 @@ export default function App() {
       title: 'Related Database Tables',
       badge: 'Step 4: RELATED TABLES',
       pdfPage: 1,
-      objectiveText: "Explore auxiliary tables (Rooms, Timeslots, Constraints, Patterns) to verify seat capacity rules or limits. Check Done.",
+      objectiveText: 'Open the table dropdown and explore Rooms, Timeslots, Constraints, or Meeting Patterns.',
       isCompleted: (state) => state.completedChapters.includes(5),
       content: (
         <div className="space-y-4">
-          <p className="italic text-slate-750">
+          <p className="italic text-slate-600">
             "You can see that next to the word 'Sections' there is a drop down button, click on it to see other related data tables."
           </p>
           <p className="leading-relaxed text-sm">
@@ -193,11 +196,11 @@ export default function App() {
       title: 'Logging Section Notes',
       badge: 'Step 5: AUDIT NOTES',
       pdfPage: 2,
-      objectiveText: "Open notes dialogue on a course, add a coordinator notice (e.g. 'needs override' or 'ahmed'), and click Done.",
+      objectiveText: "Open a section's notes and add a coordinator notice (e.g. needs override).",
       isCompleted: (state) => state.completedChapters.includes(6),
       content: (
         <div className="space-y-4">
-          <p className="font-semibold text-slate-805">
+          <p className="font-semibold text-slate-800">
             "Notes is the last column in the table, click on view notes."
           </p>
           <p className="leading-relaxed">
@@ -214,17 +217,17 @@ export default function App() {
       title: 'Running AI Solver',
       badge: 'Step 6: OPTIMIZATION',
       pdfPage: 1-2,
-      objectiveText: "Trigger the resolution algorithms on the live scheduler using 'Run Solver', then check this milestone as completed.",
+      objectiveText: "Run Solver and open the calendar view (auto-detected when you're on the calendar).",
       isCompleted: (state) => state.completedChapters.includes(7),
       content: (
         <div className="space-y-4">
-          <p className="text-slate-705 italic leading-relaxed text-sm">
+          <p className="text-slate-600 italic leading-relaxed text-sm">
             "You will automatically be taken to the calendar page after you run the solver."
           </p>
           <p>
             The automated solver solves constraints, checks capacities against room sizes, and matches overlapping streams in milliseconds.
           </p>
-          <div className="p-3.5 bg-emerald-50 border border-emerald-150 text-emerald-950 font-semibold rounded text-xs leading-normal">
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-950 font-semibold rounded text-xs leading-normal">
             Upon successful execution, the interface transforms into an intuitive, side-by-side time matrix calendar grid mapped by day blocks.
           </div>
         </div>
@@ -235,7 +238,7 @@ export default function App() {
       title: 'Calendar Maps & Overlap Locks',
       badge: 'Step 7: OVERLAP LOCKS',
       pdfPage: 2,
-      objectiveText: "In calendar mode, test manual locks on specific courses, or lock the overall configuration to safe-keep edits. Check Done.",
+      objectiveText: 'In calendar mode, try locking sections or locking all manual changes.',
       isCompleted: (state) => state.completedChapters.includes(8),
       content: (
         <div className="space-y-4">
@@ -259,7 +262,7 @@ export default function App() {
       title: 'Saving Snapshots & Exports',
       badge: 'Step 8: SAVING & DEEP-LINKS',
       pdfPage: 1-2,
-      objectiveText: "Experiment saving draft schedules or triggering a PDF report download. Mark this final milestone as complete!",
+      objectiveText: 'Save a schedule to history or export a PDF report.',
       isCompleted: (state) => state.completedChapters.includes(9),
       content: (
         <div className="space-y-4">
@@ -279,6 +282,39 @@ export default function App() {
       )
     }
   ];
+
+  const handleChaptersDetected = useCallback(
+    (ids: number[]) => {
+      setCompletedChapters((prev) => {
+        const merged = new Set<number>(prev);
+        let added = false;
+        for (const id of ids) {
+          if (!merged.has(id)) {
+            merged.add(id);
+            added = true;
+            if (!notifiedChaptersRef.current.has(id)) {
+              notifiedChaptersRef.current.add(id);
+              const chapter = guideChapters.find((c) => c.id === id);
+              addNotification(
+                chapter
+                  ? `Objective complete: ${chapter.title}`
+                  : 'Training step detected on the live scheduler.',
+                'success'
+              );
+            }
+          }
+        }
+        if (!added) return prev;
+        const sorted = [...merged].sort((a, b) => a - b);
+        const highest = Math.max(...ids);
+        if (activeChapterIdx < highest - 1 && highest <= guideChapters.length) {
+          setTimeout(() => setActiveChapterIdx(highest - 1), 600);
+        }
+        return sorted;
+      });
+    },
+    [activeChapterIdx]
+  );
 
   const simulatorState = {
     completedChapters
@@ -339,7 +375,7 @@ export default function App() {
         )}
 
         {/* VIEW 2: SCHEDULER WEBVIEW PORTAL (Or glossary view if full ref selected) */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#f4f7f9] relative p-1.5 lg:p-4">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#f4f7f9] relative p-1.5 lg:p-4">
           
           {viewMode === 'ref' ? (
             <div className="flex-1 p-6 md:p-8 max-w-5xl mx-auto w-full overflow-y-auto">
@@ -347,7 +383,10 @@ export default function App() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
-              <WebviewBrowser initialUrl="https://course-scheduler.xlab-cwru.com/" />
+              <WebviewBrowser
+                initialUrl="https://course-scheduler.xlab-cwru.com/"
+                onChaptersDetected={handleChaptersDetected}
+              />
             </div>
           )}
 

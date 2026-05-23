@@ -804,7 +804,7 @@ export default function SchedulerSimulator() {
 
                               </div>
                             ) : (
-                              <div className="flex-1 rounded border border-dashed border-slate-200 flex items-center justify-center select-none text-[9px] text-slate-350 font-bold uppercase tracking-widest bg-slate-50/20">
+                              <div className="flex-1 rounded border border-dashed border-slate-200 flex items-center justify-center select-none text-[9px] text-slate-400 font-bold uppercase tracking-widest bg-slate-50/20">
                                 Empty Slot
                               </div>
                             )}
@@ -825,7 +825,7 @@ export default function SchedulerSimulator() {
         {/* 3. HISTORIC SAVED SNAPSHOTS */}
         {viewMode === 'history' && (
           <div className="space-y-4 max-w-2xl mx-auto py-4">
-            <div className="bg-white border border-slate-205 rounded shadow-sm p-4 text-center">
+            <div className="bg-white border border-slate-200 rounded shadow-sm p-4 text-center">
               <History className="w-10 h-10 text-[#0a304e] mx-auto mb-3" />
               <h4 className="font-extrabold text-sm uppercase text-[#0a304e] tracking-widest mb-1">State Snapshots Ledger</h4>
               <p className="text-xs text-slate-500 max-w-sm mx-auto leading-normal">
@@ -864,7 +864,7 @@ export default function SchedulerSimulator() {
       {/* NOTES CONTEXT POPUP MODAL */}
       {isNotesModalOpen && (
         <div id="notes-modal" className="fixed inset-0 bg-[#000000]/65 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-350 shadow-2xl max-w-md w-full overflow-hidden text-slate-800">
+          <div className="bg-white rounded-lg border border-slate-300 shadow-2xl max-w-md w-full overflow-hidden text-slate-800">
             <div className="bg-[#0a304e] text-white px-5 py-4 flex items-center justify-between">
               <h5 className="font-black uppercase tracking-wider text-xs flex items-center gap-1.5 font-sans">
                 <Edit2 className="w-4 h-4 text-amber-400" />
@@ -939,7 +939,7 @@ export default function SchedulerSimulator() {
       {/* SAVE DRAFT POPUP MODAL */}
       {isSaveModalOpen && (
         <div id="save-modal" className="fixed inset-0 bg-[#000000]/65 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-350 shadow-2xl max-w-sm w-full overflow-hidden text-slate-800">
+          <div className="bg-white rounded-lg border border-slate-300 shadow-2xl max-w-sm w-full overflow-hidden text-slate-800">
             <div className="bg-[#0a304e] text-white px-5 py-4">
               <h5 className="font-black uppercase tracking-wider text-xs flex items-center gap-1.5 font-sans">
                 <Save className="w-4 h-4 text-emerald-400" />

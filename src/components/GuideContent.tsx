@@ -56,7 +56,7 @@ export default function GuideContent({
           <span className="text-xs font-bold text-[#0a304e] tracking-widest uppercase">
             Chapter {activeChapterIdx + 1} of {chapters.length}
           </span>
-          <span className="px-2.5 py-1 text-[10px] font-semibold bg-slate-100 text-slate-750 rounded border border-gray-200 uppercase">
+          <span className="px-2.5 py-1 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded border border-gray-200 uppercase">
             PDF Page {currentChapter.pdfPage}
           </span>
         </div>
@@ -104,13 +104,18 @@ export default function GuideContent({
             </div>
             <div className="flex-1">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                {isCompleted ? 'Objective Cleared!' : 'Step Objective (Live Action)'}
+                {isCompleted ? 'Objective complete' : 'Step objective'}
               </h4>
               <p className="text-sm mt-0.5 font-medium leading-relaxed font-sans">
                 {currentChapter.objectiveText}
               </p>
+              {isCompleted && (
+                <p className="text-xs mt-1.5 text-emerald-700">
+                  Detected from your actions in the live scheduler panel.
+                </p>
+              )}
               {currentChapter.hint && !isCompleted && (
-                <p className="text-xs mt-1.5 text-amber-700 italic font-mono bg-amber-100/50 p-1.5 px-2 rounded border border-amber-200/50">
+                <p className="text-xs mt-1.5 text-amber-700 italic bg-amber-100/50 p-1.5 px-2 rounded border border-amber-200/50">
                   <strong>Hint:</strong> {currentChapter.hint}
                 </p>
               )}
@@ -118,10 +123,9 @@ export default function GuideContent({
                 <button
                   type="button"
                   onClick={() => onToggleComplete(currentChapter.id)}
-                  className="mt-3 px-3.5 py-1.5 bg-[#0a304e] hover:bg-[#08253d] text-white rounded text-[11px] font-bold shadow-3xs transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                  className="mt-3 px-3 py-1.5 text-[11px] font-semibold text-[#0a304e] hover:bg-[#0a304e]/10 rounded border border-[#0a304e]/20 transition-colors"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Mark Step as Done</span>
+                  Mark done manually
                 </button>
               )}
             </div>
@@ -129,7 +133,7 @@ export default function GuideContent({
         </div>
 
         {/* Written PDF Content */}
-        <div className="prose prose-slate max-w-none text-slate-705 text-slate-700 text-sm leading-relaxed space-y-4">
+        <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed space-y-4">
           {currentChapter.content}
         </div>
       </div>
@@ -139,7 +143,7 @@ export default function GuideContent({
         <button
           onClick={handlePrev}
           disabled={activeChapterIdx === 0}
-          className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded text-xs font-medium text-slate-650 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Previous</span>
