@@ -209,22 +209,32 @@ export function relativeProxyBase(config: ProxyConfig, targetHost: string): stri
 
 function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
   const cookieName = cookieVal.split('=')[0]?.trim() ?? '';
-  // __Host- cookies must stay Path=/ on this site (guide origin) to cover /proxy-site/...
-  if (cookieName.startsWith('__Host-')) {
-    let hostCookie = cookieVal.replace(/;\s*domain=[^;]+/gi, '');
-    if (!/;\s*path=/i.test(hostCookie)) hostCookie += '; Path=/';
-    if (!/;\s*secure/i.test(hostCookie)) hostCookie += '; Secure';
-    return hostCookie;
-  }
-  if (cookieName.startsWith('__Secure-')) {
-    return cookieVal;
-  }
+  
+  // Strip any domain attribute from the cookie completely.
+  // This allows the browser to store it locally on our guide application origin.
   let cleaned = cookieVal.replace(/;\s*domain=[^;]+/gi, '');
+
+  if (cookieName.startsWith('__Host-')) {
+    // __Host- cookies must have Path=/ and no Domain
+    if (!/;\s*path=/i.test(cleaned)) {
+      cleaned += '; Path=/';
+    } else {
+      cleaned = cleaned.replace(/;\s*path=[^;]*/i, '; Path=/');
+    }
+    if (!/;\s*secure/i.test(cleaned)) {
+      cleaned += '; Secure';
+    }
+    return cleaned;
+  }
+
+  // Rewrite Path for all other cookies (including __Secure-) to match our proxy path prefix
   if (!/;\s*path=/i.test(cleaned)) {
     cleaned += `; Path=${proxyPathPrefix}`;
   } else {
     cleaned = cleaned.replace(/;\s*path=[^;]*/i, `; Path=${proxyPathPrefix}`);
   }
+
+  // Ensure Secure and Lax SameSite attributes are configured
   if (!/;\s*samesite=/i.test(cleaned)) {
     cleaned += '; SameSite=Lax';
   }
@@ -269,13 +279,21 @@ export function rewriteContentUrls(content: string, config: ProxyConfig): string
     // https://host/path and http://host/path
     result = result.replace(
       new RegExp(`https?:\\/\\/${escapedHost}([^"'\\s<>]*)`, 'gi'),
-      (_match, path = '') => joinProxyPath(proxiedRoot, path)
+      (match, path = '') => {
+        if (/cwru-sso-callback/i.test(path) || /cwru-sso-callback/i.test(match)) {
+          return match;
+        }
+        return joinProxyPath(proxiedRoot, path);
+      }
     );
 
     // JSON-escaped: https:\/\/host\/path (Next.js flight data)
     result = result.replace(
       new RegExp(`https?:\\\\/\\\\/${escapedHost}((?:\\\\/|[^"'\\\\])*)`, 'gi'),
-      (_match, rawPath = '') => {
+      (match, rawPath = '') => {
+        if (/cwru-sso-callback/i.test(rawPath) || /cwru-sso-callback/i.test(match)) {
+          return match;
+        }
         const path = rawPath.replace(/\\/g, '');
         const proxied = joinProxyPath(proxiedRoot, path || '/');
         return proxied.replace(/\//g, '\\/');
@@ -285,7 +303,12 @@ export function rewriteContentUrls(content: string, config: ProxyConfig): string
     // Protocol-relative: //host/path
     result = result.replace(
       new RegExp(`\\/\\/${escapedHost}([^"'\\s<>]*)`, 'g'),
-      (_match, path = '') => joinProxyPath(proxiedRoot, path)
+      (match, path = '') => {
+        if (/cwru-sso-callback/i.test(path) || /cwru-sso-callback/i.test(match)) {
+          return match;
+        }
+        return joinProxyPath(proxiedRoot, path);
+      }
     );
 
     // Note: we intentionally do NOT rewrite URL-encoded service= callback URLs —
@@ -446,53 +469,9 @@ export async function handleProxyRequest(
     redirect: 'manual',
   });
 
+  // Let the browser handle SSO callback redirects natively: this updates browser address history,
+  // prevents "ticket already consumed" errors on refresh, and ensures standard auth flows operate.
   const mergedSetCookies: string[] = [];
-
-  if (isSsoCallback && ctx.method === 'GET') {
-    let hopUrl = targetUrl;
-    let hopHost = host;
-    for (let hop = 0; hop < 12 && response.status >= 300 && response.status < 400; hop++) {
-      const setCookies =
-        typeof response.headers.getSetCookie === 'function'
-          ? response.headers.getSetCookie()
-          : response.headers.get('set-cookie')
-            ? [response.headers.get('set-cookie')!]
-            : [];
-      for (const c of setCookies) {
-        mergedSetCookies.push(
-          rewriteSetCookie(
-            c,
-            joinProxyPath(proxyPrefixForHost(hopHost, appBase), '/')
-          )
-        );
-      }
-
-      const location = response.headers.get('location');
-      if (!location) break;
-
-      if (location.startsWith('http://') || location.startsWith('https://')) {
-        const urlObj = new URL(location);
-        if (!config.hosts.has(urlObj.host)) break;
-        hopHost = urlObj.host;
-        hopUrl = location;
-      } else if (location.startsWith('/')) {
-        hopUrl = `https://${hopHost}${location}`;
-      } else {
-        break;
-      }
-
-      const hopHeaders = new Headers();
-      headers.forEach((value, key) => hopHeaders.set(key, value));
-      hopHeaders.set('host', hopHost);
-      hopHeaders.set('origin', `https://${hopHost}`);
-
-      response = await fetch(hopUrl, {
-        method: 'GET',
-        headers: hopHeaders,
-        redirect: 'manual',
-      });
-    }
-  }
 
   const outHeaders: Record<string, string | string[]> = {};
 
