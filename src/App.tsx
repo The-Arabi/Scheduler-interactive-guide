@@ -93,7 +93,7 @@ export default function App() {
             <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">Instructions for Live Execution:</h6>
             <ol className="list-decimal pl-5 text-xs text-slate-600 space-y-2 leading-relaxed">
               <li>Click the green <strong>"Launch Live Scheduler ↗"</strong> button on the top right.</li>
-              <li>Input your formal <code>@case.edu</code> institutional user account and password credentials.</li>
+              <li>Input your formal <code>case ID</code> institutional user account and password credentials.</li>
               <li>Confirm the verification push notification on your registered physical corporate smart device using the <strong>Duo Mobile</strong> application.</li>
               <li>Once authenticated, the main Sections Table layout will load automatically.</li>
             </ol>
@@ -147,8 +147,8 @@ export default function App() {
           <div className="bg-blue-50 border border-blue-150 p-4 rounded-lg flex items-start gap-3">
             <FileSpreadsheet className="w-5 h-5 text-blue-800 mt-0.5 shrink-0" />
             <div className="text-xs text-blue-950">
-              <span className="font-bold block mb-1">Spreadsheet Guidelines</span>
-              Keep column headers corresponding exactly with the registry labels: <code>ID, Course, Instructor, Enroll, Cap, Meeting Pattern</code> to prevent schema conflicts when loading data.
+              <span className="font-bold block mb-1">Flexible Column Translation</span>
+              You don&apos;t need to have these column labels exactly. We have an integrated translator layer that automatically maps your worksheet headers to our system&apos;s columns. Since this translator is continuously updated, there is no strict guideline for sheet headers.
             </div>
           </div>
           <div>
@@ -577,12 +577,9 @@ export default function App() {
                     <p className="text-slate-612 text-xs sm:text-sm leading-relaxed">
                       Coordinators generally design draft schedules inside Excel formats. The scheduler bypasses the manual typing stage by letting users import <code>.xlsx</code> or <code>.csv</code> grids.
                     </p>
-                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg space-y-1 text-xs text-emerald-950 font-medium">
-                      <span className="font-extrabold uppercase text-[10px] text-emerald-800 tracking-wide block">Optimal Excel Columns Reference:</span>
-                      Make sure your sheets contain column keys corresponding to standard labels:
-                      <code className="block bg-white border border-emerald-100 rounded px-2 py-1 mt-1 font-mono text-slate-781 text-[10px] select-all">
-                        ID, Department, Course, Instructor, Enroll, Cap, Meeting Pattern
-                      </code>
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg space-y-1 text-xs text-emerald-950 font-medium font-sans">
+                      <span className="font-extrabold uppercase text-[10px] text-emerald-800 tracking-wide block">Flexible Column Mapping Support:</span>
+                      Sheets do not need to follow strict column naming guidelines. An intelligent translator layer automatically translates custom worksheet headers to standard columns. Since the translator is continuously updated to handle new variations, you can upload your rosters directly.
                     </div>
                   </div>
                 )}

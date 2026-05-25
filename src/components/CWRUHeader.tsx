@@ -40,10 +40,10 @@ export default function CWRUHeader({ viewMode, setViewMode }: CWRUHeaderProps) {
         </div>
 
         {/* Core Mode Navigation Tabs */}
-        <div className="flex items-center bg-[#072238] p-1 rounded-xl border border-blue-900/50 shadow-inner">
+        <div className="flex items-center bg-[#072238] p-1 rounded-xl border border-blue-900/50 shadow-inner flex-nowrap whitespace-nowrap shrink-0">
           <button
             onClick={() => setViewMode('guide')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer select-none ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer select-none whitespace-nowrap shrink-0 ${
               viewMode === 'guide'
                 ? 'bg-[#0a304e] text-white border border-blue-900/35 shadow-sm'
                 : 'text-blue-200/85 hover:text-white hover:bg-white/5'
@@ -56,7 +56,7 @@ export default function CWRUHeader({ viewMode, setViewMode }: CWRUHeaderProps) {
           
           <button
             onClick={() => setViewMode('features')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer select-none ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer select-none whitespace-nowrap shrink-0 ${
               viewMode === 'features'
                 ? 'bg-[#0a304e] text-white border border-blue-900/35 shadow-sm'
                 : 'text-blue-200/85 hover:text-white hover:bg-white/5'
@@ -69,7 +69,7 @@ export default function CWRUHeader({ viewMode, setViewMode }: CWRUHeaderProps) {
 
           <button
             onClick={() => setViewMode('glossary')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer select-none ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer select-none whitespace-nowrap shrink-0 ${
               viewMode === 'glossary'
                 ? 'bg-[#0a304e] text-white border border-blue-900/35 shadow-sm'
                 : 'text-blue-200/85 hover:text-white hover:bg-white/5'
