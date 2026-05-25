@@ -424,7 +424,7 @@ export async function handleProxyRequest(
   appBase = '/'
 ): Promise<ProxyResponse> {
   const config = createProxyConfig(appBase, ctx.publicOrigin);
-  const proxyPathPrefix = joinProxyPath(proxyPrefixForHost(host, appBase), '/');
+  const proxyPathPrefix = proxyPrefixForHost(host, appBase);
   const subpath = normalizeProxiedSubpath(host, ctx.subpath || '/');
   const targetUrl = `https://${host}${subpath}`;
 
