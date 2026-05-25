@@ -72,6 +72,11 @@ function f(u){
     if(u.indexOf("http://")===0||u.indexOf("https://")===0){
       var abs=new URL(u);
       if(HOSTS[abs.hostname])return px(abs.hostname)+casPath(abs.pathname,abs.hostname)+abs.search+abs.hash;
+      if(abs.hostname===location.hostname && abs.pathname.indexOf("/proxy-site/")===-1){
+        var m=(location.pathname||"").match(/\\/proxy-site\\/([^/]+)/);
+        var host=m?m[1]:"";
+        if(host)return px(host)+casPath(abs.pathname,host)+abs.search+abs.hash;
+      }
       return u;
     }
     if(u.charAt(0)==="/"){
