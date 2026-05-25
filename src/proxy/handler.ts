@@ -110,14 +110,24 @@ l.replace=function(u){return r(f(u));};
 var of=window.fetch;
 window.fetch=function(i,n){
   if(i){
-    if(typeof i==="string") i=f(i);
-    else if(i instanceof URL) i=f(i.toString());
-    else if(typeof i.url==="string") i=new Request(f(i.url),i);
-    else if(typeof i.toString==="function") {
-      var str=i.toString();
-      if(str.indexOf("http")===0 || str.indexOf("/")===0) {
-        i=f(str);
+    try {
+      if(typeof i==="string") {
+        i=f(i);
+      } else if(i instanceof URL) {
+        i=f(i.toString());
+      } else if(typeof i.url==="string") {
+        var targetUrl=f(i.url);
+        if(targetUrl!==i.url) {
+          i=new Request(targetUrl,i);
+        }
+      } else if(typeof i.toString==="function") {
+        var str=i.toString();
+        if(str.indexOf("http")===0 || str.indexOf("/")===0) {
+          i=f(str);
+        }
       }
+    } catch(e) {
+      console.warn("[Proxy Fetch Shim Warning]", e);
     }
   }
   return of(i,n);
@@ -125,20 +135,33 @@ window.fetch=function(i,n){
 var ox=window.XMLHttpRequest.prototype.open;
 window.XMLHttpRequest.prototype.open=function(m,u,a,usr,pwd){
   if(u) {
-    if(typeof u==="string") u=f(u);
-    else if(u instanceof URL) u=f(u.toString());
+    try {
+      if(typeof u==="string") u=f(u);
+      else if(u instanceof URL) u=f(u.toString());
+    } catch(e) {
+      console.warn("[Proxy XHR Shim Warning]", e);
+    }
   }
   return ox.call(this,m,u,a,usr,pwd);
 };
 var oo=window.open;
-window.open=function(u,t,g){if(typeof u==="string")u=f(u);return oo.call(window,u,t,g);};
+window.open=function(u,t,g){
+  if(typeof u==="string") {
+    try {
+      u=f(u);
+    } catch(e) {}
+  }
+  return oo.call(window,u,t,g);
+};
 document.addEventListener("click",function(e){
-  var el=e.target&&e.target.closest?e.target.closest("a[href]"):null;
-  if(!el)return;
-  var h=el.getAttribute("href");
-  if(!h)return;
-  var n=f(h);
-  if(n!==h){e.preventDefault();e.stopPropagation();location.assign(n);}
+  try {
+    var el=e.target&&e.target.closest?e.target.closest("a[href]"):null;
+    if(!el)return;
+    var h=el.getAttribute("href");
+    if(!h)return;
+    var n=f(h);
+    if(n!==h){e.preventDefault();e.stopPropagation();location.assign(n);}
+  } catch(e) {}
 },true);
 function pullBack(){
   if(!HOSTS[location.hostname]||location.pathname.indexOf("/proxy-site/")!==-1)return;
@@ -458,7 +481,16 @@ function rewriteHtmlDocument(
   return result;
 }
 
-function shouldRewriteBody(contentType: string): boolean {
+function shouldRewriteBody(subpath: string, contentType: string): boolean {
+  const normPath = subpath.split('?')[0].split('#')[0].toLowerCase();
+  if (
+    normPath.endsWith('.css') ||
+    normPath.endsWith('.js') ||
+    normPath.endsWith('.mjs') ||
+    normPath.endsWith('.json')
+  ) {
+    return true;
+  }
   const lower = contentType.toLowerCase();
   return REWRITABLE_CONTENT_TYPES.some((t) => lower.includes(t));
 }
@@ -516,25 +548,12 @@ export async function handleProxyRequest(
 
   // Let the browser handle SSO callback redirects natively: this updates browser address history,
   // prevents "ticket already consumed" errors on refresh, and ensures standard auth flows operate.
-  const mergedSetCookies: string[] = [];
-
   const outHeaders: Record<string, string | string[]> = {};
 
   response.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
     if (STRIPPED_RESPONSE_HEADERS.has(lowerKey)) return;
-
-    if (lowerKey === 'set-cookie') {
-      const values =
-        typeof response.headers.getSetCookie === 'function'
-          ? response.headers.getSetCookie()
-          : value
-            ? [value]
-            : [];
-      const rewritten = values.map((c) => rewriteSetCookie(c, proxyPathPrefix));
-      outHeaders['set-cookie'] = [...mergedSetCookies, ...rewritten];
-      return;
-    }
+    if (lowerKey === 'set-cookie') return;
 
     if (lowerKey === 'location') {
       outHeaders[key] = rewriteLocationHeader(value, host, config);
@@ -544,12 +563,41 @@ export async function handleProxyRequest(
     outHeaders[key] = value;
   });
 
+  // Extract cookies robustly, avoiding duplicate key iteration overwrites.
+  let rawCookies: string[] = [];
+  if (typeof response.headers.getSetCookie === 'function') {
+    rawCookies = response.headers.getSetCookie();
+  } else {
+    const cookieVal = response.headers.get('set-cookie');
+    if (cookieVal) {
+      rawCookies = [cookieVal];
+    }
+  }
+
+  if (rawCookies.length > 0) {
+    outHeaders['set-cookie'] = rawCookies.map((c) => rewriteSetCookie(c, proxyPathPrefix));
+  }
+
+  // Force CORS wildcard headers to completely eliminate local asset or nested fetch CORS blocks
+  outHeaders['access-control-allow-origin'] = '*';
+  outHeaders['access-control-allow-methods'] = 'GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH';
+  outHeaders['access-control-allow-headers'] = '*';
+
   if (response.status >= 300 && response.status < 400) {
     return { status: response.status, headers: outHeaders, body: Buffer.alloc(0) };
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  if (shouldRewriteBody(contentType)) {
+  const normPath = subpath.split('?')[0].split('#')[0].toLowerCase();
+  let contentType = response.headers.get('content-type') || '';
+  if (normPath.endsWith('.css') && !contentType.toLowerCase().includes('css')) {
+    contentType = 'text/css';
+    outHeaders['content-type'] = 'text/css';
+  } else if ((normPath.endsWith('.js') || normPath.endsWith('.mjs')) && !contentType.toLowerCase().includes('javascript')) {
+    contentType = 'application/javascript';
+    outHeaders['content-type'] = 'application/javascript';
+  }
+
+  if (shouldRewriteBody(subpath, contentType)) {
     const text = await response.text();
     const rewritten = contentType.includes('text/html')
       ? rewriteHtmlDocument(text, host, config)
