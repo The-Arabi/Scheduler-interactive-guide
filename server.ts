@@ -141,7 +141,8 @@ async function startServer() {
   app.all(PROXY_ROUTE_REGEX, async (req, res, next) => {
     const host = req.params[0];
     if (host === '_health') return next();
-    const subpath = req.params[1] || '/';
+    const queryStr = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    const subpath = (req.params[1] || '/') + queryStr;
     await proxyFromExpress(req, res, host, subpath);
   });
 
