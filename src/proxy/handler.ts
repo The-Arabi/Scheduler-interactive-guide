@@ -43,24 +43,23 @@ const SKIP_REQUEST_HEADERS = new Set([
 export const DEFAULT_PROXY_HOSTS = [
   'login.case.edu',
   'course-scheduler.xlab-cwru.com',
+  'dudbm6bcnmy8e.cloudfront.net',
 ];
 
 const CAS_HOST = 'login.case.edu';
 const SCHEDULER_HOST = 'course-scheduler.xlab-cwru.com';
 
 /** Keep navigation/fetch on /proxy-site/<host>/... — never break out to bare login.case.edu URLs. */
-function buildNavigationShim(appBase: string): string {
-  const schedulerPx = joinProxyPath(
-    proxyPrefixForHost(SCHEDULER_HOST, appBase),
-    '/'
-  ).replace(/\/$/, '');
-  const casPx = joinProxyPath(proxyPrefixForHost(CAS_HOST, appBase), '/').replace(
-    /\/$/,
-    ''
-  );
+function buildNavigationShim(config: ProxyConfig): string {
+  const hostMapping: Record<string, string> = {};
+  for (const h of config.hosts) {
+    hostMapping[h] = joinProxyPath(proxyPrefixForHost(h, config.appBase), '/').replace(/\/$/, '');
+  }
+  const defaultPx = hostMapping[SCHEDULER_HOST] || '';
+
   return `<script id="xlab-proxy-nav-shim">(function(){
-var S=${JSON.stringify(schedulerPx)},C=${JSON.stringify(casPx)};
-var HOSTS={${JSON.stringify(CAS_HOST)}:C,${JSON.stringify(SCHEDULER_HOST)}:S};
+var HOSTS=${JSON.stringify(hostMapping)};
+var S=${JSON.stringify(defaultPx)};
 function px(h){return HOSTS[h]||S;}
 function getHostFromPath(p){
   var parts=(p||"").split("/proxy-site/");
@@ -77,25 +76,30 @@ function casPath(path,host){
   return path;
 }
 function f(u){
-  if(typeof u!=="string")return u;
-  if(u.indexOf("/proxy-site/")!==-1)return u;
+  if(!u)return u;
+  var str=u;
+  if(typeof str!=="string"){
+    if(typeof str.toString==="function") str=str.toString();
+    else return u;
+  }
+  if(str.indexOf("/proxy-site/")!==-1)return str;
   try{
-    if(u.indexOf("//")===0){u=(location.protocol||"https:")+u;}
-    if(u.indexOf("http://")===0||u.indexOf("https://")===0){
-      var abs=new URL(u);
+    if(str.indexOf("//")===0){str=(location.protocol||"https:")+str;}
+    if(str.indexOf("http://")===0||str.indexOf("https://")===0){
+      var abs=new URL(str);
       if(HOSTS[abs.hostname])return px(abs.hostname)+casPath(abs.pathname,abs.hostname)+abs.search+abs.hash;
       if(abs.hostname===location.hostname && abs.pathname.indexOf("/proxy-site/")===-1){
         var host=getHostFromPath(location.pathname);
         if(host)return px(host)+casPath(abs.pathname,host)+abs.search+abs.hash;
       }
-      return u;
+      return str;
     }
-    if(u.charAt(0)==="/"){
+    if(str.charAt(0)==="/"){
       var host=getHostFromPath(location.pathname);
-      return curPx()+casPath(u,host);
+      return curPx()+casPath(str,host);
     }
   }catch(e){}
-  return u;
+  return str;
 }
 var h=history,ps=h.pushState.bind(h),rs=h.replaceState.bind(h);
 h.pushState=function(st,ti,u){return ps(st,ti,f(u));};
@@ -104,7 +108,28 @@ var l=location,a=l.assign.bind(l),r=l.replace.bind(l);
 l.assign=function(u){return a(f(u));};
 l.replace=function(u){return r(f(u));};
 var of=window.fetch;
-window.fetch=function(i,n){if(typeof i==="string")i=f(i);else if(i&&i.url)i=new Request(f(i.url),i);return of(i,n);};
+window.fetch=function(i,n){
+  if(i){
+    if(typeof i==="string") i=f(i);
+    else if(i instanceof URL) i=f(i.toString());
+    else if(typeof i.url==="string") i=new Request(f(i.url),i);
+    else if(typeof i.toString==="function") {
+      var str=i.toString();
+      if(str.indexOf("http")===0 || str.indexOf("/")===0) {
+        i=f(str);
+      }
+    }
+  }
+  return of(i,n);
+};
+var ox=window.XMLHttpRequest.prototype.open;
+window.XMLHttpRequest.prototype.open=function(m,u,a,usr,pwd){
+  if(u) {
+    if(typeof u==="string") u=f(u);
+    else if(u instanceof URL) u=f(u.toString());
+  }
+  return ox.call(this,m,u,a,usr,pwd);
+};
 var oo=window.open;
 window.open=function(u,t,g){if(typeof u==="string")u=f(u);return oo.call(window,u,t,g);};
 document.addEventListener("click",function(e){
@@ -368,7 +393,7 @@ function rewriteHtmlDocument(
   const baseTag = `<base href="${proxyPathPrefix}" />`;
   const navShim =
     host === SCHEDULER_HOST || host === CAS_HOST
-      ? buildNavigationShim(config.appBase)
+      ? buildNavigationShim(config)
       : '';
   const casContinue =
     host === CAS_HOST ? buildCasSsoContinueScript(config.appBase) : '';
