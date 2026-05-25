@@ -196,7 +196,8 @@ export function joinProxyPath(prefix: string, subpath: string): string {
 
 export function proxyPrefixForHost(host: string, appBase: string): string {
   const appBaseNorm = appBase.endsWith('/') ? appBase : `${appBase}/`;
-  return `${appBaseNorm}proxy-site/${host}`;
+  const raw = `${appBaseNorm}proxy-site/${host}`;
+  return ('/' + raw).replace(/\/+/g, '/');
 }
 
 /** Same-origin path prefix for a proxied host (used in HTML/JS rewrites). */
