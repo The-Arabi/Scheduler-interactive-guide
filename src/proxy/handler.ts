@@ -62,8 +62,20 @@ function buildNavigationShim(appBase: string): string {
 var S=${JSON.stringify(schedulerPx)},C=${JSON.stringify(casPx)};
 var HOSTS={${JSON.stringify(CAS_HOST)}:C,${JSON.stringify(SCHEDULER_HOST)}:S};
 function px(h){return HOSTS[h]||S;}
-function curPx(){var m=(location.pathname||"").match(/\\/proxy-site\\/([^/]+)/);return m?px(m[1]):S;}
-function casPath(path,host){if(host==="login.case.edu"&&(path==="/login"||path.indexOf("/login?")===0))return path.replace(/^\\/login/,"/cas/login");return path;}
+function getHostFromPath(p){
+  var parts=(p||"").split("/proxy-site/");
+  return parts[1]?parts[1].split("/")[0]:"";
+}
+function curPx(){
+  var host=getHostFromPath(location.pathname);
+  return host?px(host):S;
+}
+function casPath(path,host){
+  if(host==="login.case.edu"&&(path==="/login"||path.indexOf("/login?")===0)){
+    return "/cas/login" + path.slice(6);
+  }
+  return path;
+}
 function f(u){
   if(typeof u!=="string")return u;
   if(u.indexOf("/proxy-site/")!==-1)return u;
@@ -73,15 +85,13 @@ function f(u){
       var abs=new URL(u);
       if(HOSTS[abs.hostname])return px(abs.hostname)+casPath(abs.pathname,abs.hostname)+abs.search+abs.hash;
       if(abs.hostname===location.hostname && abs.pathname.indexOf("/proxy-site/")===-1){
-        var m=(location.pathname||"").match(/\\/proxy-site\\/([^/]+)/);
-        var host=m?m[1]:"";
+        var host=getHostFromPath(location.pathname);
         if(host)return px(host)+casPath(abs.pathname,host)+abs.search+abs.hash;
       }
       return u;
     }
     if(u.charAt(0)==="/"){
-      var m=(location.pathname||"").match(/\\/proxy-site\\/([^/]+)/);
-      var host=m?m[1]:"";
+      var host=getHostFromPath(location.pathname);
       return curPx()+casPath(u,host);
     }
   }catch(e){}
@@ -233,11 +243,11 @@ function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
     return cleaned;
   }
 
-  // Rewrite Path for all other cookies (including __Secure-) to match our proxy path prefix
+  // Rewrite Path for all other cookies (including __Secure-) to match the root path '/' so they are sent with relative /api fetches
   if (!/;\s*path=/i.test(cleaned)) {
-    cleaned += `; Path=${proxyPathPrefix}`;
+    cleaned += '; Path=/';
   } else {
-    cleaned = cleaned.replace(/;\s*path=[^;]*/i, `; Path=${proxyPathPrefix}`);
+    cleaned = cleaned.replace(/;\s*path=[^;]*/i, '; Path=/');
   }
 
   // Ensure Secure and Lax SameSite attributes are configured
