@@ -237,23 +237,23 @@ function rewriteSetCookie(cookieVal: string, proxyPathPrefix: string): string {
     } else {
       cleaned = cleaned.replace(/;\s*path=[^;]*/i, '; Path=/');
     }
-    if (!/;\s*secure/i.test(cleaned)) {
-      cleaned += '; Secure';
-    }
-    return cleaned;
-  }
-
-  // Rewrite Path for all other cookies (including __Secure-) to match the root path '/' so they are sent with relative /api fetches
-  if (!/;\s*path=/i.test(cleaned)) {
-    cleaned += '; Path=/';
   } else {
-    cleaned = cleaned.replace(/;\s*path=[^;]*/i, '; Path=/');
+    // Rewrite Path for all other cookies (including __Secure-) to match the root path '/' so they are sent with relative /api fetches
+    if (!/;\s*path=/i.test(cleaned)) {
+      cleaned += '; Path=/';
+    } else {
+      cleaned = cleaned.replace(/;\s*path=[^;]*/i, '; Path=/');
+    }
   }
 
-  // Ensure Secure and Lax SameSite attributes are configured
-  if (!/;\s*samesite=/i.test(cleaned)) {
-    cleaned += '; SameSite=Lax';
+  // Force SameSite=None to support nested iframe contexts (like AI Studio)
+  if (/;\s*samesite=[^;]*/i.test(cleaned)) {
+    cleaned = cleaned.replace(/;\s*samesite=[^;]*/i, '; SameSite=None');
+  } else {
+    cleaned += '; SameSite=None';
   }
+
+  // Force Secure
   if (!/;\s*secure/i.test(cleaned)) {
     cleaned += '; Secure';
   }
