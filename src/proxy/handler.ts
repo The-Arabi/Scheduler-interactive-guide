@@ -398,14 +398,18 @@ function rewriteHtmlDocument(
   if (host === CAS_HOST) {
     const casAction = joinProxyPath(relativeProxyBase(config, host), '/cas/login');
     result = result.replace(
-      /(action|href)=(["'])login\2/gi,
-      `$1=$2${casAction}$2`
+      /(action|href)=(["'])login(\?[^"']*)?\2/gi,
+      (_m, attr, quote, query = '') => {
+        return `${attr}=${quote}${casAction}${query}${quote}`;
+      }
     );
     const proxyBase = relativeProxyBase(config, host);
     result = result.replace(
       /(href|src|action)=(["'])(?!https?:|\/|#|mailto:|javascript:|data:)([^"']+)\2/gi,
       (_m, attr, quote, rel) => {
-        const path = rel === 'login' ? '/cas/login' : `/${rel}`;
+        const path = (rel === 'login' || rel.startsWith('login?'))
+          ? rel.replace(/^login/, '/cas/login')
+          : `/${rel}`;
         return `${attr}=${quote}${joinProxyPath(proxyBase, path)}${quote}`;
       }
     );
