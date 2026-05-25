@@ -37,7 +37,7 @@ export default function TableKeysGlossary({}: TableKeysGlossaryProps) {
         { id: 'Building', def: 'Academic facility name block.' },
         { id: 'Capacity', def: 'Max physical seating capacity. Sections with enrollments exceeding capacity limits can never be assigned here.' },
         { id: 'Features', def: 'Available hardware accessories (e.g., screencast, whiteboard, projectors).' },
-        { id: 'Notes', def: 'Registrar instructions regarding specific ventilation, seating configs, or quiet rooms.' }
+        { id: 'Notes', def: 'Scheduler instructions regarding specific ventilation, seating configs, or quiet rooms.' }
       ]
     },
     Timeslots: {
