@@ -1,0 +1,37 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  build_and_lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Run Linter (TypeScript checking)
+        run: npm run lint
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Deploy to Render (Optional)
+        # This step will only run on main/master branches when RENDER_DEPLOY_HOOK secret is set
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.RENDER_DEPLOY_HOOK != '' }}
+        run: |
+          echo "Deploying update to Render online environment..."
+          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

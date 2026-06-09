@@ -103,31 +103,29 @@ export default function App() {
     },
     {
       id: 2,
-      title: 'Navigating the Registry Tables',
-      badge: 'Step 2: Table Registry Views',
-      objectiveText: 'Locate alternative data schemas (Rooms, Timeslots, Constraints) using the dropdown menu.',
-      expectedResult: 'You will find how to toggle from Course Sections list to the physical classroom list and room-capacities.',
+      title: 'Table Layout & Filtering',
+      badge: 'Step 2: Custom Layouts & Filters',
+      objectiveText: 'Customize columns visibility, resize column width headers, and utilize selective filters.',
+      expectedResult: 'You will adapt your column layout to fit your preferences and successfully filter rows by criteria.',
       content: (
         <div className="space-y-4">
-          <p className="text-slate-700 text-sm leading-relaxed">
-            The database workspace operates around 5 related tables containing core attributes for our constraint equations. While the <strong>Sections</strong> table remains the central table, other lists specify rulesets.
+          <p className="text-slate-705 text-sm leading-relaxed">
+            The database workspace operates around 5 related tables. To optimize your editing environment, you can now personalize your table views and filter records dynamically.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-              <span className="font-extrabold text-[#0a304e] block mb-1">Sections Table</span>
-              <p className="text-slate-600">The grid containing enrollment quotas, specific course descriptions, and assigned professors.</p>
-            </div>
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-              <span className="font-extrabold text-[#0a304e] block mb-1">Rooms & Timeslots Tables</span>
-              <p className="text-slate-600">Lists room codes, buildings, and capacities alongside standardized university timeblocks.</p>
-            </div>
+          <div className="space-y-3 bg-blue-50/50 border border-blue-900/10 p-3.5 rounded-lg text-xs text-slate-700 leading-relaxed text-left">
+            <strong className="text-[#0a304e] block font-bold">New Table Customizations:</strong>
+            <ul className="list-disc pl-4 space-y-1.5 text-slate-700 font-medium">
+              <li><strong>Customizable Columns:</strong> Toggle which columns you want to view inline by selecting or deselecting from the column settings menu.</li>
+              <li><strong>Interactive Header Resizing:</strong> Hover over the divider edges of column headers and click-and-drag to adjust their widths perfectly.</li>
+              <li><strong>Column-Specific Filtering:</strong> Click the <strong>&quot;Filters (#)&quot;</strong> button next to the search bar to filter editor rows by custom columns.</li>
+            </ul>
           </div>
           <div>
             <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>Look at the top-left section toolbar of the database page next to the word <strong>"Sections"</strong>.</li>
-              <li>Click the downward-pointing chevron dropdown. We have modeled a glossary of terms for these in the **"Database Glossary"** tab.</li>
-              <li>Select <strong>"Rooms"</strong> to view physical seat allotments or <strong>"Timeslots"</strong> to check standardized lecture slots.</li>
+              <li>Locate the <strong>&quot;Filters (0)&quot;</strong> button near the main search input bar.</li>
+              <li>Click to select column filters and narrow down key listings on the editor workspace.</li>
+              <li>Toggle table heading settings to show or hide optional columns as needed, or drag column borders to fit long course titles.</li>
             </ol>
           </div>
         </div>
@@ -164,25 +162,29 @@ export default function App() {
     },
     {
       id: 4,
-      title: 'Logging Coordinator Notes',
-      badge: 'Step 4: Registry Overrides',
-      objectiveText: 'Explore the "View Notes" interface on the extreme right column of any Section row.',
-      expectedResult: 'Attached custom instructions such as specialized equipment or double whiteboard requests.',
+      title: 'Row Editor Modal Override',
+      badge: 'Step 4: Row-by-Row Editing',
+      objectiveText: 'Explore the Row Editor Modal to perform isolated, complete record modifications.',
+      expectedResult: 'A customized, focused modal matches the selected course row to perform clean, clean updates.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-700 text-sm leading-relaxed">
-            Individual course sections often have operational guidelines or special considerations from academic department chairs (e.g. <em>"Requires a hybrid video conference setup"</em> or <em>"Instructor requests afternoon blocks only"</em>).
+            Individual course sections often have operational guidelines or special considerations from academic department chairs (e.g. <em>"Requires a hybrid video conference setup"</em>). To allow for cleaner record editing options without visual horizontal tracking eye-strain:
           </p>
-          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 border-l-4 border-l-[#0a304e] font-mono text-[11px] leading-relaxed text-slate-700">
-            <strong>Sample Coordinator Note:</strong><br />
-            "Prof. Smith requested PBL-122 specifically due to physically integrated whiteboard wall setups."
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs/relaxed text-left flex gap-3 text-slate-700 font-medium">
+            <Sliders className="w-5 h-5 text-[#0a304e] mt-0.5 shrink-0" />
+            <div>
+              <span className="font-bold text-[#0a304e] block mb-0.5">The Row Editor Modal Interface:</span>
+              Provides a complete, row-by-row view of the selected course section. This lets you inspect and modify all constraints, course settings, instructor properties, and custom notes in a highly structured dialog form.
+            </div>
           </div>
           <div>
             <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-2 leading-relaxed">
-              <li>Scroll key-right to the very last column in the <strong>Sections</strong> database table titled <strong>"Notes"</strong>.</li>
-              <li>Tap the clickable text badge reading <strong>"View Notes"</strong> or <strong>"View"</strong>.</li>
-              <li>Write your customized commentary feedback, select priority tier, and save the note.</li>
+              <li>Find the <strong>"Actions"</strong> column on any Course Section record row of the main editor.</li>
+              <li>Click the <strong>middle action button</strong> (representing the detail/row editing action) on that row.</li>
+              <li>A beautiful modal pops up containing all of the record's values presented cleanly in vertical fields.</li>
+              <li>Conduct draft improvements, update coordinator notes, and apply to submit changes instantly back to the grid.</li>
             </ol>
           </div>
         </div>
@@ -552,14 +554,22 @@ export default function App() {
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
                       Once signed in, coordinators manage schedules through structured tabular indexes. Cells are completely editable like regular spreadsheets, with drop-down cell prompts to handle timeslot values or assigned professors.
                     </p>
-                    <ul className="text-xs space-y-2 text-slate-700 font-medium list-none pl-0">
+                    <ul className="text-xs space-y-2.5 text-slate-700 font-medium list-none pl-0">
                       <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
-                        <span><strong>Standard Sections Grid:</strong> Displays class listings parsed by department blocks. Set caps and review actual student registration counts.</span>
+                        <span><strong>Standard Sections Grid:</strong> Displays class listings parsed by department blocks. Set caps and review student registration counts.</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
-                        <span><strong>Support Metadata Tables:</strong> Fast dropdown switches let you audit room seating values, scheduled block types (Short block/Long block), and rules constraints.</span>
+                        <span><strong>Customizable Columns & Resize:</strong> Users can toggle column visibility configurations from the setting switches, as well as interactively drag column header dividers right/left to adjust active view widths.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
+                        <span><strong>Row Editor Modal:</strong> Clicking the middle action button under the <em>"Actions"</em> column triggers a focused row-by-row modal layout, ensuring pristine data entry and update efficiency.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
+                        <span><strong>Dynamic Table Filters:</strong> Narrow down large datasets by clicking the new <strong>"Filters (#)"</strong> button next to the search bar to filter editor tables by specific column properties.</span>
                       </li>
                     </ul>
                     <p className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded border border-slate-200">
