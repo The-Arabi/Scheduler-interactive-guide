@@ -31,7 +31,9 @@ jobs:
 
       - name: Deploy to Render (Optional)
         # This step will only run on main/master branches when RENDER_DEPLOY_HOOK secret is set
-        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.RENDER_DEPLOY_HOOK != '' }}
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.RENDER_DEPLOY_HOOK != '' }}
         run: |
           echo "Deploying update to Render online environment..."
-          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          curl -f -X POST "$RENDER_DEPLOY_HOOK"

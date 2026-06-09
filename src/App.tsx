@@ -76,26 +76,26 @@ export default function App() {
     showToast('All training progress markers have been reset.');
   };
 
-  // High-fidelity pedagogical training checklist chapters
+  // Simplified help guides for coordinators and schedulers
   const stepsData: TutorialStep[] = [
     {
       id: 1,
-      title: 'Establishing SSO Connections',
-      badge: 'Step 1: Security Gateway',
-      objectiveText: 'Establish a secure authenticated session with the live academic scheduling server.',
-      expectedResult: 'You will bypass the local frame blockage to see the main scheduling draft screen.',
+      title: 'Logging In (Single Sign-On)',
+      badge: 'Step 1: Access & Security',
+      objectiveText: 'Log into the scheduling system with your credentials.',
+      expectedResult: 'You will enter the main draft scheduler dashboard.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-700 text-sm leading-relaxed">
-            Case Western Reserve University secures its systems via standard <strong className="text-blue-900">Single Sign-On (SSO)</strong> powered by Okta and Duo Mobile MFA. This ensures only authorized schedulers of the Weatherhead School of Management can edit draft course listings.
+            Welcome! You can log in using your standard Case Western Reserve University account (powered by Okta and Duo Mobile verification). This protects your schedule drafts and ensures they are safely accessible only to authorized coordinators.
           </p>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">Easy Steps to Get Started:</h6>
             <ol className="list-decimal pl-5 text-xs text-slate-600 space-y-2 leading-relaxed">
               <li>Click the green <strong>"Launch Live Scheduler ↗"</strong> button on the top right.</li>
-              <li>Input your formal <code>case ID</code> institutional user account and password credentials.</li>
-              <li>Confirm the verification push notification on your registered physical corporate smart device using the <strong>Duo Mobile</strong> application.</li>
-              <li>Once authenticated, the main Sections Table layout will load automatically.</li>
+              <li>Type in your standard university <code>case ID</code> and password.</li>
+              <li>Approve the login request sent to your phone via the <strong>Duo Mobile</strong> app.</li>
+              <li>Once approved, the system will automatically open your main draft tables.</li>
             </ol>
           </div>
         </div>
@@ -104,28 +104,28 @@ export default function App() {
     {
       id: 2,
       title: 'Table Layout & Filtering',
-      badge: 'Step 2: Custom Layouts & Filters',
-      objectiveText: 'Customize columns visibility, resize column width headers, and utilize selective filters.',
-      expectedResult: 'You will adapt your column layout to fit your preferences and successfully filter rows by criteria.',
+      badge: 'Step 2: Column Layouts & Filters',
+      objectiveText: 'Choose which details to show, resize column widths, and filter courses by matching categories.',
+      expectedResult: 'You will customize the workspace to your preference and only view courses matching your selected filters.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-705 text-sm leading-relaxed">
-            The database workspace operates around 5 related tables. To optimize your editing environment, you can now personalize your table views and filter records dynamically.
+            To make viewing easier, you can hide columns you don't need, resize columns to fit long class titles, and filter courses by specific details.
           </p>
           <div className="space-y-3 bg-blue-50/50 border border-blue-900/10 p-3.5 rounded-lg text-xs text-slate-700 leading-relaxed text-left">
-            <strong className="text-[#0a304e] block font-bold">New Table Customizations:</strong>
+            <strong className="text-[#0a304e] block font-bold">New Table Settings:</strong>
             <ul className="list-disc pl-4 space-y-1.5 text-slate-700 font-medium">
-              <li><strong>Customizable Columns:</strong> Toggle which columns you want to view inline by selecting or deselecting from the column settings menu.</li>
-              <li><strong>Interactive Header Resizing:</strong> Hover over the divider edges of column headers and click-and-drag to adjust their widths perfectly.</li>
-              <li><strong>Column-Specific Filtering:</strong> Click the <strong>&quot;Filters (#)&quot;</strong> button next to the search bar to filter editor rows by custom columns.</li>
+              <li><strong>Custom Columns:</strong> Choose which columns (such as instructor name or classroom capacity) you want to see on your screen by toggling settings.</li>
+              <li><strong>Resize Headers:</strong> Point your cursor at the lines between column headers and drag them left or right to make columns wider or narrower.</li>
+              <li><strong>Filters:</strong> Click the <strong>&quot;Filters (#)&quot;</strong> button near the search bar to show only certain classes, like online-only or a specific department.</li>
             </ul>
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Customize:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>Locate the <strong>&quot;Filters (0)&quot;</strong> button near the main search input bar.</li>
-              <li>Click to select column filters and narrow down key listings on the editor workspace.</li>
-              <li>Toggle table heading settings to show or hide optional columns as needed, or drag column borders to fit long course titles.</li>
+              <li>Find the new <strong>&quot;Filters (0)&quot;</strong> button next to the search box on the page.</li>
+              <li>Click it to check or uncheck options, instantly focus on the classes you want to work on.</li>
+              <li>Drag any column divider edge if a lecture name looks slightly squeezed.</li>
             </ol>
           </div>
         </div>
@@ -133,28 +133,28 @@ export default function App() {
     },
     {
       id: 3,
-      title: 'Excel & CSV Catalog Imports',
-      badge: 'Step 3: Spreadsheets Handling',
-      objectiveText: 'Import the updated semester draft using the spreadsheet tool.',
-      expectedResult: 'You will populate course rows in the table instantly from an uploaded Excel or CSV template.',
+      title: 'Uploading Spreadsheet Files',
+      badge: 'Step 3: Spreadsheet Uploads',
+      objectiveText: 'Load your semester draft schedule using an Excel or CSV file.',
+      expectedResult: 'All your courses will quickly load and display in your schedule table in one go.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-705 text-sm leading-relaxed">
-            Coordinators don’t have to insert hundred-row lists manually of draft sections. The live site includes an direct spreadsheet parsing interface supporting instant spreadsheet upload.
+            There is no need to type in hundreds of classes manually. You can simply upload your existing department spreadsheet to fill the scheduling table instantly.
           </p>
           <div className="bg-blue-50 border border-blue-150 p-4 rounded-lg flex items-start gap-3">
             <FileSpreadsheet className="w-5 h-5 text-blue-800 mt-0.5 shrink-0" />
             <div className="text-xs text-blue-950">
-              <span className="font-bold block mb-1">Flexible Column Translation</span>
-              You don&apos;t need to have these column labels exactly. We have an integrated translator layer that automatically maps your worksheet headers to our system&apos;s columns. Since this translator is continuously updated, there is no strict guideline for sheet headers.
+              <span className="font-bold block mb-1">Flexible Spreadsheet Columns</span>
+              We have integrated a smart column mapping system. Your spreadsheet columns do not need exact names—the parser automatically translates the key headings (like course code, capacity, and professors) for you.
             </div>
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Import:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>In the toolbar directly over the main database grid, locate and click the <strong>"Import Spreadsheet"</strong> or <strong>"Upload Excel"</strong> button.</li>
-              <li>Toggle selection on your desktop file explorer to pick your <code>.xlsx</code> or <code>.csv</code> configuration outline.</li>
-              <li>Verify the automatically parsed courses before continuing to solve overlaps.</li>
+              <li>Above the class list table, find and click the <strong>"Import Spreadsheet"</strong> or <strong>"Upload Excel"</strong> button.</li>
+              <li>Select your saved <code>.xlsx</code> or <code>.csv</code> spreadsheet from your computer's files.</li>
+              <li>The system will review the spreadsheet and display all your lines in the table instantly.</li>
             </ol>
           </div>
         </div>
@@ -162,29 +162,29 @@ export default function App() {
     },
     {
       id: 4,
-      title: 'Row Editor Modal Override',
-      badge: 'Step 4: Row-by-Row Editing',
-      objectiveText: 'Explore the Row Editor Modal to perform isolated, complete record modifications.',
-      expectedResult: 'A customized, focused modal matches the selected course row to perform clean, clean updates.',
+      title: 'Simple Course Edit Form',
+      badge: 'Step 4: Editing Row-by-Row',
+      objectiveText: 'Open a clean, single-page edit form for any class to modify details smoothly.',
+      expectedResult: 'A simplified form pops up showing all information for that class without clutter or horizontal scrolling.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-700 text-sm leading-relaxed">
-            Individual course sections often have operational guidelines or special considerations from academic department chairs (e.g. <em>"Requires a hybrid video conference setup"</em>). To allow for cleaner record editing options without visual horizontal tracking eye-strain:
+            Rather than looking across a very wide table of columns to make changes, our row editor lets you make clean adjustments in one centered pop-up window:
           </p>
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs/relaxed text-left flex gap-3 text-slate-700 font-medium">
             <Sliders className="w-5 h-5 text-[#0a304e] mt-0.5 shrink-0" />
             <div>
-              <span className="font-bold text-[#0a304e] block mb-0.5">The Row Editor Modal Interface:</span>
-              Provides a complete, row-by-row view of the selected course section. This lets you inspect and modify all constraints, course settings, instructor properties, and custom notes in a highly structured dialog form.
+              <span className="font-bold text-[#0a304e] block mb-0.5">The Course Edit Window:</span>
+              Shows all information for a single class vertically, so you can edit enrollment capacity, professor, day patterns, or notes in one convenient checklist format without losing your place.
             </div>
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Edit:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-2 leading-relaxed">
-              <li>Find the <strong>"Actions"</strong> column on any Course Section record row of the main editor.</li>
-              <li>Click the <strong>middle action button</strong> (representing the detail/row editing action) on that row.</li>
-              <li>A beautiful modal pops up containing all of the record's values presented cleanly in vertical fields.</li>
-              <li>Conduct draft improvements, update coordinator notes, and apply to submit changes instantly back to the grid.</li>
+              <li>Find the class you wish to edit in the list, then look at the <strong>"Actions"</strong> column.</li>
+              <li>Click the <strong>middle button</strong> (the detail form icon) on that row.</li>
+              <li>A clean form window pops open with all available fields.</li>
+              <li>Type in your updates or pick options from dropdown lists, and update the row back on your table instantly.</li>
             </ol>
           </div>
         </div>
@@ -192,28 +192,28 @@ export default function App() {
     },
     {
       id: 5,
-      title: 'Executing the UTS Constraint Solver',
-      badge: 'Step 5: Core Automations',
-      objectiveText: 'Run the UTS solver algorithm to arrange conflict-free rooms & timeslots mapping.',
-      expectedResult: 'The scheduler system will map all sections onto the primary calendar layout simultaneously.',
+      title: 'Running the Automatic Scheduler',
+      badge: 'Step 5: Smart Matching',
+      objectiveText: 'Run the automatic matching system to arrange conflict-free rooms and timeslots.',
+      expectedResult: 'The scheduler engine maps all active classes to open classrooms and suitable hours.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-700 text-sm leading-relaxed">
-            The automated constraint resolution core represents Weatherhead’s central engine. Placing instructors and hundreds of registrants in limited academic halls without overlapping blocks manually is mathematically tedious.
+            Arranging classes manually can be like solving a giant jigsaw puzzle. Our smart organizer system automatically checks available rooms, class sizes, teacher routines, and time blocks to place everything beautifully in one click.
           </p>
           <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-950 rounded-lg space-y-1">
-            <span className="font-bold text-xs uppercase text-emerald-800 tracking-wide block">The Intelligent Constraint Solver will:</span>
+            <span className="font-bold text-xs uppercase text-emerald-800 tracking-wide block">The Smart Scheduler Automatically:</span>
             <ul className="list-disc pl-4 text-xs space-y-1">
-              <li>Confirm physical room caps are strictly greater than section enrollment quotas.</li>
-              <li>Eliminate instructor-time overlap blocks.</li>
-              <li>Prioritize locked course assignments.</li>
+              <li>Confirms a classroom is large enough for your student capacity limits.</li>
+              <li>Makes sure no instructor has two classes at the exact same hour.</li>
+              <li>Leaves your manually locked classes right where you put them.</li>
             </ul>
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Auto-Schedule:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>Locate the vibrant green action button at the top-right reading <strong>"Run Solver"</strong>.</li>
-              <li>Click to trigger calculations. The system runs constraint algorithms and moves the application view automatically to the <strong>Monday Room Grid (Calendar Views)</strong>.</li>
+              <li>Find the green button at the top-right reading <strong>"Run Solver"</strong> or <strong>"Run Scheduler"</strong>.</li>
+              <li>Click it to start. The system automatically processes the entries and shows you the resulting layout in the **Weekly Classroom Calendar** view.</li>
             </ol>
           </div>
         </div>
@@ -221,25 +221,25 @@ export default function App() {
     },
     {
       id: 6,
-      title: 'The Monday Room Grid View',
-      badge: 'Step 6: Matrix Audit',
-      objectiveText: 'Analyze classroom schedules horizontally across the primary weekly room grid.',
-      expectedResult: 'You will audit timeslot allocations and identify empty rooms across the day.',
+      title: 'The Weekly Classroom Grid',
+      badge: 'Step 6: Visual Calendar',
+      objectiveText: 'Review and audit classroom timeslots across a visual weekly room map.',
+      expectedResult: 'You can check class schedules at a glance and manually fill remaining empty cells.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-700 text-sm leading-relaxed">
-            After the Solver has completed its run, sections are displayed inside the visual calendar layout of Peter B. Lewis building rooms. The primary column grid represents academic hours, while the rows list individual classroom units.
+            Once scheduled, your courses are laid out in a clean, visual format of classrooms in the Peter B. Lewis building. Hours are listed horizontally from left to right, while classrooms are listed down the page as rows.
           </p>
           <div className="p-3.5 bg-slate-100 border border-slate-200 rounded-lg text-xs leading-relaxed text-slate-600">
-            <strong>Visual Clues on the Grid:</strong><br />
-            - Scheduled classes appear as color-coded cards representing departments.<br />
-            - Empty white cells display timeslot coordinates, allowing you to place unscheduled classes manually.
+            <strong>Key Visual Color Codes:</strong><br />
+            - Classes are color-coded by department so you can see groupings clearly.<br />
+            - Empty white cards represent available hours, where you can place unscheduled classes manually.
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Review:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>Examine the Monday Room Grid after running the solver.</li>
-              <li>To adjust any assignment manually, tap any scheduled class card to highlight open swap panels, or drag cards into free slots.</li>
+              <li>Look at the grid after running the automatic scheduler.</li>
+              <li>If you want to move a class manually, simply click any scheduled class box to open moves or drag boxes into available slots.</li>
             </ol>
           </div>
         </div>
@@ -247,28 +247,28 @@ export default function App() {
     },
     {
       id: 7,
-      title: 'Pinning Override Locks',
-      badge: 'Step 7: Manual Overrides',
-      objectiveText: 'Configure locked pins on specialized time block sections.',
-      expectedResult: 'Manual assignments are preserved intact when running subsequent solver updates.',
+      title: 'Locking Your Manual Changes',
+      badge: 'Step 7: Lock-In Placements',
+      objectiveText: 'Freeze specific courses in place so they won\'t change when running the scheduler.',
+      expectedResult: 'Your selected course is locked, and the automatic scheduler won\'t move it.',
       content: (
         <div className="space-y-4">
-          <p className="text-slate-701 text-sm leading-relaxed">
-            When you manually place or override a course’s coordinates (for instance, forcing critical executive seminars specifically into PBL-250), you must guarantee that executing the solver a second time does not overwrite your custom decision.
+          <p className="text-slate-710 text-sm leading-relaxed">
+            If you have manually placed a high-priority course (for example, scheduling a seminar specifically in PBL-250), you'll want to lock it in so the scheduler works around your choice instead of moving it next time.
           </p>
           <div className="bg-[#0a304e]/5 p-3.5 border border-[#0a304e]/15 rounded-lg flex gap-3 text-xs text-[#0a304e]">
             <Lock className="w-5 h-5 text-[#0a304e] mt-0.5 shrink-0" />
             <div>
-              <span className="font-extrabold block mb-1">"Lock Manual Changes" Feature</span>
-              Provides a security forcefield around manual pins. The solver protects and ignores these sections, prioritizing them as static mathematical constraints.
+              <span className="font-extrabold block mb-1">"Lock Courses" Feature</span>
+              Freezes chosen courses in place. The automatic scheduler respects your selections and finds open slots for the remaining classes without disturbing your locked choices.
             </div>
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Lock:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>On the week layout, look at the individual course card or locate the action toggle labeled <strong>"Lock All Sections"</strong>.</li>
-              <li>Click the lock icon on individual priority classes to anchor them firmly.</li>
-              <li>Observe the padlock indicator appear alongside the section code.</li>
+              <li>On a class card in the weekly layout, or under the main actions toolbar, locate the padlock indicator.</li>
+              <li>Click the lock icon on any class to freeze it.</li>
+              <li>To lock all current placements at once, click the <strong>"Lock All Sections"</strong> button in the main toolbar.</li>
             </ol>
           </div>
         </div>
@@ -276,25 +276,25 @@ export default function App() {
     },
     {
       id: 8,
-      title: 'Saving Snapshot Backups',
-      badge: 'Step 8: Version Archives',
-      objectiveText: 'Save current schedule drafts as snapshots to easily restore or test alternative scenarios.',
-      expectedResult: 'A historical draft registration is compiled in the Snapshots sidebar tab.',
+      title: 'Saving Draft Snapshots',
+      badge: 'Step 8: Save Drafts & Backups',
+      objectiveText: 'Save current schedule configurations as snapshots to safely experiment with backups.',
+      expectedResult: 'A backup copy of your schedule is stored and easily reachable under the Snapshots tab.',
       content: (
         <div className="space-y-4">
           <p className="text-slate-700 text-sm leading-relaxed">
-            Creating high-quality university schedules requires testing multiple configurations (e.g., trying a Tue/Thu-focused draft versus a Mon/Wed-focused layout). Rather than overwriting progress, schedulers utilize snapshots.
+            When designing university courses, you often want to test out a few different ideas (for instance, a Tuesday/Thursday draft versus a Monday/Wednesday draft). Snapshots prevent you from losing your progress.
           </p>
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 font-medium text-slate-700">
             <span className="text-[#0a304e] font-extrabold uppercase text-[10px] tracking-wide block">How Backups Work:</span>
-            <p className="text-[#555]">Each snapshot keeps record timestamps, the exact count of mapped courses, and manual override pin locations, preserving historical milestones flawlessly.</p>
+            <p className="text-[#555]">Each draft backup saves the date, the exact list of classes, and your custom lock coordinates, so you can test changes and restore older versions whenever you like.</p>
           </div>
           <div>
-            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Instructions for Live Execution:</h6>
+            <h6 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">Easy Steps to Save & Restore:</h6>
             <ol className="list-decimal pl-4.5 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-              <li>On the top menu of the Weekly Grid view, press the button marked <strong>"Save Schedule"</strong>.</li>
-              <li>Type in your designation (like <em>"Fall Draft - Track A"</em>) and click Save.</li>
-              <li>Restore prior configurations anytime by opening the <strong>"Snapshots"</strong> list in the sidebar panel.</li>
+              <li>In the toolbar at the top of your layout, click <strong>"Save Schedule"</strong>.</li>
+              <li>Type in an easy-to-remember name (like <em>"Fall Draft - Options A"</em>) and click Save.</li>
+              <li>To switch back to any previous version, select it from the <strong>"Snapshots"</strong> panel in the sidebar.</li>
             </ol>
           </div>
         </div>
@@ -499,7 +499,7 @@ export default function App() {
               </span>
               <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Weatherhead Course Scheduler Modules</h2>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed max-w-3xl">
-                The scheduler application is built around streamlined workflows designed for efficient curricula modeling. Below is a simplified, structured explanation of the central systems. Select a module to review its operational parameters.
+                The scheduler application is divided into straightforward, easy-to-use tools. Below is a simplified guide to our key features. Select any module to see how it makes scheduling stress-free.
               </p>
             </div>
 
@@ -509,14 +509,16 @@ export default function App() {
               {/* Feature Grid Selector */}
               <div className="md:col-span-4 space-y-2 select-none">
                 {[
-                  { id: 'editor', title: 'Registry Tables Editor', icon: Table, badge: 'Database' },
-                  { id: 'import', title: 'Excel Spreadsheets Importer', icon: FileSpreadsheet, badge: 'Data' },
-                  { id: 'solver', title: 'UTS Intelligent Constraint Solver', icon: Sliders, badge: 'Automation' },
-                  { id: 'calendar', title: 'Monday Time-Room Grid Matrix', icon: Calendar, badge: 'Visualization' },
-                  { id: 'locks', title: 'Manual Pins & Override Locks', icon: Lock, badge: 'Control' },
-                  { id: 'snapshots', title: 'Schedule Snapshot Logs Archive', icon: Bookmark, badge: 'Backups' },
+                  { id: 'editor', title: 'Interactive Course Tables', icon: Table, badge: 'View & Edit' },
+                  { id: 'import', title: 'Excel Spreadsheet Importer', icon: FileSpreadsheet, badge: 'Uploads' },
+                  { id: 'solver', title: 'Automatic Smart Scheduler', icon: Sliders, badge: 'Auto Arrange' },
+                  { id: 'calendar', title: 'Weekly Classroom Calendar', icon: Calendar, badge: 'Visual Schedule' },
+                  { id: 'locks', title: 'Lock Manual Placements', icon: Lock, badge: 'Freeze Slots' },
+                  { id: 'snapshots', title: 'Saved Schedule Drafts', icon: Bookmark, badge: 'Backups' },
                 ].map((item) => {
                   const Icon = item.icon;
+                  // Handle backup label or custom logic without missing import
+                  const labelBadge = item.id === 'snapshots' ? 'Backups & History' : item.badge;
                   const isSelected = selectedFeatureTab === item.id;
                   return (
                     <button
@@ -534,7 +536,7 @@ export default function App() {
                       <div className="flex-1 min-w-0">
                         <span className="block truncate">{item.title}</span>
                         <span className={`text-[8px] uppercase tracking-wider block font-bold ${isSelected ? 'text-blue-200' : 'text-slate-400'}`}>
-                          {item.badge}
+                          {labelBadge}
                         </span>
                       </div>
                     </button>
@@ -547,29 +549,29 @@ export default function App() {
                 
                 {selectedFeatureTab === 'editor' && (
                   <div className="space-y-4">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Table className="w-5 h-5 text-[#0a304e]" />
-                      <span>Course Registry Tables Grid Editor</span>
+                    <h3 className="text-base font-extrabold text-[#0a304e] flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Table className="w-5 h-5" />
+                      <span>Interactive Course Tables</span>
                     </h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                      Once signed in, coordinators manage schedules through structured tabular indexes. Cells are completely editable like regular spreadsheets, with drop-down cell prompts to handle timeslot values or assigned professors.
+                      Once signed in, you can manage class schedules using a clean tabbed table. Just like a regular spreadsheet, you can click directly on details to edit them, and use simple dropdowns to choose timeslots and professors.
                     </p>
                     <ul className="text-xs space-y-2.5 text-slate-700 font-medium list-none pl-0">
                       <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
-                        <span><strong>Standard Sections Grid:</strong> Displays class listings parsed by department blocks. Set caps and review student registration counts.</span>
+                        <span><strong>Standard Class List:</strong> Displays your classes separated by academic departments. You can set enrollment limits and see student registration numbers easily.</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
-                        <span><strong>Customizable Columns & Resize:</strong> Users can toggle column visibility configurations from the setting switches, as well as interactively drag column header dividers right/left to adjust active view widths.</span>
+                        <span><strong>Show, Hide & Resize Columns:</strong> Toggle columns on or off depending on what you want to see, and drag column dividers horizontally to change widths perfectly.</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
-                        <span><strong>Row Editor Modal:</strong> Clicking the middle action button under the <em>"Actions"</em> column triggers a focused row-by-row modal layout, ensuring pristine data entry and update efficiency.</span>
+                        <span><strong>Course Edit Form Window:</strong> Click the edit icon on any row to open a simple pop-up form. This lets you inspect details and make changes without scrolling left-and-right.</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0a304e] mt-1.5 shrink-0" />
-                        <span><strong>Dynamic Table Filters:</strong> Narrow down large datasets by clicking the new <strong>"Filters (#)"</strong> button next to the search bar to filter editor tables by specific column properties.</span>
+                        <span><strong>Quick Filtering:</strong> Narrow down a long list of courses instantly by clicking the <strong>"Filters (#)"</strong> button and choosing specific criteria.</span>
                       </li>
                     </ul>
                     <p className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded border border-slate-200">
@@ -580,41 +582,41 @@ export default function App() {
 
                 {selectedFeatureTab === 'import' && (
                   <div className="space-y-4">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <FileSpreadsheet className="w-5 h-5 text-[#0a304e]" />
-                      <span>Syllabus Spreadsheet Upload Engine</span>
+                    <h3 className="text-base font-extrabold text-[#0a304e] flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <FileSpreadsheet className="w-5 h-5" />
+                      <span>Excel Spreadsheet Importer</span>
                     </h3>
-                    <p className="text-slate-612 text-xs sm:text-sm leading-relaxed">
-                      Coordinators generally design draft schedules inside Excel formats. The scheduler bypasses the manual typing stage by letting users import <code>.xlsx</code> or <code>.csv</code> grids.
+                    <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                      Most department coordinators draft their class schedules in Excel. To save you the time of re-typing everything manually, simply upload your Excel or CSV file to import all your classes directly.
                     </p>
                     <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg space-y-1 text-xs text-emerald-950 font-medium font-sans">
-                      <span className="font-extrabold uppercase text-[10px] text-emerald-800 tracking-wide block">Flexible Column Mapping Support:</span>
-                      Sheets do not need to follow strict column naming guidelines. An intelligent translator layer automatically translates custom worksheet headers to standard columns. Since the translator is continuously updated to handle new variations, you can upload your rosters directly.
+                      <span className="font-extrabold uppercase text-[10px] text-emerald-800 tracking-wide block">Flexible Spreadsheet Columns:</span>
+                      Your spreadsheet columns do not need exact names. Our smart parser automatically translates key headings (like course code, capacity, and professors) for you, making uploads completely hassle-free.
                     </div>
                   </div>
                 )}
 
                 {selectedFeatureTab === 'solver' && (
                   <div className="space-y-4">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Sliders className="w-5 h-5 text-[#0a304e]" />
-                      <span>UTS Automatic Constraint Solver Engine</span>
+                    <h3 className="text-base font-extrabold text-[#0a304e] flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Sliders className="w-5 h-5" />
+                      <span>Automatic Smart Scheduler</span>
                     </h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                      The automatic algorithm resolves time overlaps, instructor limits, and classroom limits simultaneously. Simply click the green "Run Solver" indicator to trigger automatic calculations.
+                      Our smart scheduler checks and resolves room sizing limits, instructor availability, and class times at the same time. Simply click "Run Scheduler" and let the system arrange a conflict-free plan for you instantly.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                        <span className="font-bold text-slate-900 block mb-0.5">Limits Validation</span>
-                        <p className="text-slate-500">Excludes assigning courses to rooms smaller than their set quotas.</p>
+                        <span className="font-bold text-slate-900 block mb-0.5">Room Capacity Checks</span>
+                        <p className="text-slate-500">Prevents placing classes in classrooms that are too small for your registered enrollment targets.</p>
                       </div>
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                        <span className="font-bold text-slate-900 block mb-0.5">Professor Dups Protection</span>
-                        <p className="text-slate-500">Guarantees an instructor is never pinned to distinct classes at the same time.</p>
+                        <span className="font-bold text-slate-900 block mb-0.5">Overlap Protection</span>
+                        <p className="text-slate-500">Guarantees that no professor is scheduled to teach two different classes at the exact same hour.</p>
                       </div>
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                        <span className="font-bold text-slate-900 block mb-0.5">Optimized Alignments</span>
-                        <p className="text-slate-500">Maps courses to fit standardized meeting patterns.</p>
+                        <span className="font-bold text-slate-900 block mb-0.5">Standard Timeslots</span>
+                        <p className="text-slate-500">Saves classes into standard University teaching blocks.</p>
                       </div>
                     </div>
                   </div>
@@ -622,47 +624,47 @@ export default function App() {
 
                 {selectedFeatureTab === 'calendar' && (
                   <div className="space-y-4">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Calendar className="w-5 h-5 text-[#0a304e]" />
-                      <span>Wednesday/Monday Room Grid Matrix</span>
+                    <h3 className="text-base font-extrabold text-[#0a304e] flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Calendar className="w-5 h-5" />
+                      <span>Weekly Classroom Calendar</span>
                     </h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                      This calendar organizes scheduled courses visually across room-by-room blocks. Classroom assignments list vertically as rows, and the daily hours list horizontally as columns. This lets coordinators audit empty rooms instantly and edit schedule slots directly.
+                      This visual calendar displays scheduled classes laid out by room and hour. Classrooms are listed down the page as rows, and the daily teaching hours are shown left-to-right as columns. This makes empty slots obvious and lets you manually adjust plans with ease.
                     </p>
                     <div className="p-3.5 bg-slate-100 border border-slate-200 rounded-lg text-xs leading-relaxed text-slate-800 font-semibold font-mono">
-                      ● Column Span: Peak lecture times (8:00 AM to 6:00 PM).<br />
-                      ● Row Span: Available Peter B. Lewis lecture chambers (e.g. PBL-02, PBL-107, PBL-250, etc.).
+                      ● Horizontal Columns: Peak teaching hours (8:00 AM to 6:00 PM).<br />
+                      ● Vertical Rows: Specific lecture classrooms in the Peter B. Lewis building (such as PBL-02, PBL-107, PBL-250, etc.).
                     </div>
                   </div>
                 )}
 
                 {selectedFeatureTab === 'locks' && (
                   <div className="space-y-4">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Lock className="w-5 h-5 text-[#0a304e]" />
-                      <span>Lock Manual Changes (Hard Pins)</span>
+                    <h3 className="text-base font-extrabold text-[#0a304e] flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Lock className="w-5 h-5" />
+                      <span>Locking Your Manual Changes</span>
                     </h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                      When a course’s slot has been locked verbally with a board chair, you must make sure further solver calculations won't move that section. Locking manual changes protects specific section coordinates, removing them from solver adjustment pools completely while prioritizing them as hard constraints.
+                      If you have manually placed or agreed on a designated slot for an instructor, you can lock it. Lock protection tells the automatic scheduler to leave that classroom and time pattern exactly as you set them, arranging the rest of the schedule around your preferences.
                     </p>
                     <div className="p-4 bg-amber-50 border border-amber-200 text-amber-950 rounded-lg space-y-1 text-xs font-semibold">
-                      <span>Pro-Tip:</span> Clicking <strong>"Lock All"</strong> in the main toolbar applies a hard pin across every draft listing currently mapped. Tap individual class padlocks to toggle specific overrides.
+                      <span>Pro-Tip:</span> Clicking <strong>"Lock All"</strong> in the main toolbar freezes your whole current table draft. You can also click individual padlock icons to toggle lock-ins.
                     </div>
                   </div>
                 )}
 
                 {selectedFeatureTab === 'snapshots' && (
                   <div className="space-y-4">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Bookmark className="w-5 h-5 text-[#0a304e]" />
-                      <span>Draft Versioning Snapshots Log</span>
+                    <h3 className="text-base font-extrabold text-[#0a304e] flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Bookmark className="w-5 h-5" />
+                      <span>Saved Schedule Drafts (Snapshots)</span>
                     </h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                      Saves intermediate states under custom draft names. Rather than overwriting progress, schedulers create backups to audit alternatives. Tap and save intermediate snapshots before running test solvers.
+                      Saves your current schedule state under custom draft names. Instead of losing your work when testing different layouts, you can make backup copies anytime and revert back to an older draft whenever you like.
                     </p>
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold leading-relaxed text-slate-700">
-                      - Snapshot Archive Name: <code>"Fall 2026 - Initial Import"</code><br />
-                      - Snapshot Archive Name: <code>"Fall 2026 - After Mon/Wed Solver"</code>
+                      - Draft Name: <code>"Fall Draft - Initial Import"</code><br />
+                      - Draft Name: <code>"Fall Draft - Tested Monday/Wednesday Plan"</code>
                     </div>
                   </div>
                 )}
